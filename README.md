@@ -31,6 +31,11 @@ y conecta automáticamente al abrir la app. «Olvidar cuenta» la elimina.
 Después de conectar, los tres catálogos se precargan en segundo plano y se conservan
 en RAM durante la sesión. Secciones/categorías no vuelven a consultar el proveedor.
 «Actualizar listas» renueva los tres catálogos y los episodios guardados en RAM.
+«Detener» cierra el stream y deja el video negro; no es pausa. «Pausa / seguir»
+conserva el punto de reproducción. En TV aparece «Ir al directo» junto a la info:
+cierra y reabre el canal activo para descartar el búfer acumulado. Puede tardar
+en conectar; no elimina el retraso que introduce el proveedor. Funciona sobre
+el canal que se reproduce aunque estés navegando otra sección.
 Doble clic o Enter abre el contenido. F alterna pantalla completa; Escape sale.
 Las series primero abren su lista de episodios, identificados por temporada.
 Se conserva una sola lista a la izquierda. Categorías abre un menú acotado al

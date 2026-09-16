@@ -103,3 +103,31 @@ LD_LIBRARY_PATH="$PWD/runtime/libmpv/usr/lib64" .venv/bin/python scripts/smoke_t
 
 Referencias: [MPV propiedades](https://mpv.io/manual/stable/#property-list),
 [Apple tipografía](https://developer.apple.com/design/human-interface-guidelines/typography).
+
+## Stop y vuelta al directo — 2026-09-16
+
+La percepción de pausa con Stop provenía de conservar el framebuffer del último
+cuadro. Stop manda el comando MPV (cierra archivo/stream y limpia playlist), borra
+pending_url/metadata y pide update. paintGL sin fuente limpia negro vía funciones
+OpenGL del contexto, en vez de dejar imagen antigua. Pausa no actúa sin fuente.
+Window limpia título y playing_kind en stop/cambio/olvido. Motor sigue disponible.
+
+Ir al directo junto a resolución sólo si playing_kind=live. Reconecta la fuente
+activa con stop+loadfile replace y pause=False. Descarta demux/cache del archivo
+anterior; evita buscar al final en TS no seekable. No usa fila ni pestaña actuales
+para decidir fuente. No cambia globalmente límites de caché ni ofrece retraso
+cero: la cadena del proveedor puede llevar retraso. Pistas vuelven a detección
+normal al reconectar; preferencias de idioma persistentes aún pendientes.
+
+39 pruebas y scripts/smoke_live.py PASS: HTTP local con runtime/network.ts sintético,
+servidor continuo/paced; nueva request/cierre previo, despausa, mismo motor,
+playlist de un item; stop pausado cierra request, idle, playlist vacía y negro
+medido en framebuffer. Fixture no privado, ignorado. Generarlo si falta:
+
+```bash
+ffmpeg -hide_banner -loglevel error -y -f lavfi -i color=c=teal:s=640x360:r=25 -f lavfi -i sine=frequency=440:duration=12 -t 12 -c:v libx264 -preset ultrafast -pix_fmt yuv420p -c:a aac -f mpegts runtime/network.ts
+LD_LIBRARY_PATH="$PWD/runtime/libmpv/usr/lib64" .venv/bin/python scripts/smoke_live.py
+```
+
+[MPV stop](https://mpv.io/manual/stable/#command-interface) confirma cierre y
+limpieza de playlist con motor disponible para cliente API.

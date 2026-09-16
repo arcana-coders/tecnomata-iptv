@@ -7,7 +7,22 @@ y serie reproducidos correctamente con su proveedor en la versión corregida.
 Fase 4 iniciada con precarga/caché de tres secciones y cuenta recordada en Linux.
 Prototipo funcional, todavía sin fichas, portadas, EPG, favoritos ni progreso.
 
-## Último cambio: información, pistas y tipografía
+## Último cambio: detener real e Ir al directo
+
+Arturo reporta Detener aparentemente pausa y pide ponerse al corriente del live.
+Stop ya mandaba el comando de cierre, pero el framebuffer podía conservar el
+último cuadro; ahora paintGL limpia negro sin pending_url y stop pide redibujado.
+Stop limpia fuente/metadata/título/tipo; Pausa no actúa detenido. Ir al directo
+junto a info sólo cuando fuente activa live: stop + loadfile replace de esa URL,
+sin pausa, mismo motor/widget. Navegar otra pestaña no altera fuente activa.
+No se promete sincronía absoluta ni quitar el retraso del proveedor.
+
+39 pruebas pasan. scripts/smoke_live.py PASS en Wayland con stream HTTP sintético:
+pausa, reconexión genera nueva request y cierre anterior, mismo motor, un item;
+stop estando pausado cierra conexión, idle_active, playlist vacía y framebuffer
+negro en tres puntos. No hay URLs/logs reales en salida. Valida Arturo proveedor.
+
+## Histórico: información, pistas y tipografía
 
 Panel bajo video: resolución recibida, fps declarados y códec; audio y subtítulos
 seleccionables por ID (subtítulos también Desactivados). Ausencias explícitas.

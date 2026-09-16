@@ -93,6 +93,7 @@ class Window(QMainWindow):
         self.category_choices = {}
         self.chosen = {}
         self.current_series_id = None
+        self.playing_kind = None
         self.demo = demo
         self.demo_files = list(demo_files)
         self.kind = "live"
@@ -164,10 +165,14 @@ class Window(QMainWindow):
         video_layout.addWidget(self.video, 1)
         controls = QHBoxLayout()
         for name, function in [("Pausa / seguir", self.video.toggle_pause),
-                               ("Detener", self.video.stop), ("Pantalla completa", self.fullscreen)]:
+                               ("Detener", self.stop_playback), ("Pantalla completa", self.fullscreen)]:
             button = QPushButton(name)
             button.clicked.connect(function)
             controls.addWidget(button)
+        self.live_button = QPushButton("Ir al directo")
+        self.live_button.setToolTip("Descarta el búfer y vuelve a conectar al canal. El retraso del proveedor puede persistir.")
+        self.live_button.clicked.connect(self.catch_up_live)
+        self.live_button.hide()
         volume = QSlider(Qt.Orientation.Horizontal)
         volume.setRange(0, 100)
         volume.setValue(65)
@@ -180,7 +185,10 @@ class Window(QMainWindow):
         self.quality.setObjectName("streamInfo")
         self.quality.setWordWrap(True)
         self.quality.setToolTip("Resolución del video recibido; fps indicados por el archivo o stream. La resolución no mide por sí sola la calidad de imagen.")
-        video_layout.addWidget(self.quality)
+        info_row = QHBoxLayout()
+        info_row.addWidget(self.quality, 1)
+        info_row.addWidget(self.live_button)
+        video_layout.addLayout(info_row)
         tracks = QHBoxLayout()
         self.audio_tracks = QComboBox()
         self.subtitle_tracks = QComboBox()
@@ -218,6 +226,17 @@ class Window(QMainWindow):
         self.section("live")
         if restore and not self.demo:
             QTimer.singleShot(0, self.restore_account)
+
+    def stop_playback(self):
+        self.video.stop()
+        self.playing_kind = None
+        self.live_button.hide()
+        self.now.setText("Selecciona un canal, película o episodio")
+
+    def catch_up_live(self):
+        # Use the playing source, not the tab being browsed or highlighted row.
+        if self.playing_kind == "live" and self.video.pending_url:
+            self.video.reconnect_current()
 
     def update_media(self, info):
         self.quality.setText(describe_video(info))
@@ -329,7 +348,7 @@ class Window(QMainWindow):
                 raise
         def connected(result):
             new_client, note, remembered = result
-            self.video.stop()
+            self.stop_playback()
             if self.client:
                 self.client.close()
             self.client = new_client
@@ -347,7 +366,7 @@ class Window(QMainWindow):
 
     def forget_account(self):
         def forgotten(_):
-            self.video.stop()
+            self.stop_playback()
             if self.client:
                 self.client.close()
             self.client = None
@@ -516,6 +535,8 @@ class Window(QMainWindow):
                 return
         self.choose_content(row)
         self.now.setText(str(row.get("name", "Reproduciendo")))
+        self.playing_kind = self.kind
+        self.live_button.setVisible(self.playing_kind == "live")
         self.video.play(url)
 
     def fullscreen(self):

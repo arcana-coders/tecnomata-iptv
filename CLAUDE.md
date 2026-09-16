@@ -22,7 +22,7 @@ IPTVnator. `CatalogCache` es por cuenta y sesión: precargar categorías/listas 
 live/vod/series en segundo plano, reutilizar al entrar/cambiar categoría y cachear
 episodios. Actualizar listas/cambiar/olvidar cuenta invalidan el caché.
 No bloquear navegación/reproducción por la precarga. Pruebas GUI de caché/cuenta:
-`QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q` (37 pruebas actualmente).
+`QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q` (39 pruebas actualmente).
 
 Cerrar trabajo actualizando `docs/SESSION.md`, el índice y desarrollo en
 `../asistente/projects/tecnomata-iptv/`, más `../asistente/journal.md`.
@@ -43,3 +43,10 @@ Elegir pistas por ID, nunca posición. No inventar idiomas/resolución desde nom
 Reset al abrir/detener; controles deshabilitados si no hay pistas. OSD/OSC apagados
 (sí se renderizan subtítulos). Tipografía Qt: configure_appearance en app.py.
 Validación real ficticia: scripts/smoke_tracks.py y runtime/tracks-demo.mkv.
+
+Detener: command stop, pending_url=None, metadata vacía y update; paintGL limpia
+GL_COLOR_BUFFER_BIT a negro sin fuente. Pausa no actúa estando detenido.
+Ir al directo sólo para playing_kind live; reconnect_current hace stop+loadfile
+replace de fuente activa en RAM y despausa, mismo motor. No usar pestaña ni fila
+seleccionada para decidir qué canal reconectar. Sin prometer retraso cero.
+Prueba real: scripts/smoke_live.py, runtime/network.ts ficticio y HTTP local.

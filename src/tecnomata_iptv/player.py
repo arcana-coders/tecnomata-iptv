@@ -68,6 +68,12 @@ class VideoWidget(QOpenGLWidget):
             self.failed.emit(self.init_error)
 
     def paintGL(self):
+        if not self.pending_url:
+            # libmpv can retain its last framebuffer after stop; explicitly clear it.
+            functions = self.context().functions()
+            functions.glClearColor(0, 0, 0, 1)
+            functions.glClear(0x00004000)  # GL_COLOR_BUFFER_BIT
+            return
         if self.renderer and not self.closed:
             ratio = self.devicePixelRatioF()
             self.renderer.render(flip_y=True, opengl_fbo={
@@ -152,8 +158,16 @@ class VideoWidget(QOpenGLWidget):
             self.failed.emit("No se pudo cambiar la pista. Vuelve a intentar.")
 
     def toggle_pause(self):
-        if self.engine:
+        if self.engine and self.pending_url:
             self.engine.pause = not self.engine.pause
+
+    def reconnect_current(self):
+        url = self.pending_url
+        if not url:
+            return
+        self.stop()
+        self.play(url)
+        self.state_changed.emit("Volviendo al directo…")
 
     def stop(self):
         self.reset_media()
@@ -161,7 +175,11 @@ class VideoWidget(QOpenGLWidget):
         self.diagnostic = {"state": "idle"}
         self.state_changed.emit("Reproducción detenida")
         if self.engine:
-            self.engine.command("stop")
+            try:
+                self.engine.command("stop")
+            except Exception:
+                self.failed.emit("No se pudo detener la reproducción.")
+        self.update()
 
     def set_volume(self, value):
         if self.engine:

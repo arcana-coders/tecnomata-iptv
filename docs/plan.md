@@ -70,3 +70,7 @@ de captura ficticia; video: 8 cambios, 127 frames, un motor/widget/ventana.
 Fase 4 avanza con información externa de resolución/fps/códec y selección de
 audio/subtítulos; lista más compacta y tipografía inspirada en macOS. 37 pruebas
 y smoke real de pistas ficticias pasan; validación del proveedor por Arturo pendiente.
+
+Stop con pantalla negra e Ir al directo (reconexión de fuente live activa)
+implementados; 39 pruebas y smoke real de cierre HTTP/framebuffer pasan.
+No promete eliminar el retraso del proveedor; Arturo valida con canal deportivo.
