@@ -38,6 +38,13 @@ ancho del selector y al interior de la ventana, con scroll y Cerrar; Escape o
 clic fuera también lo cierran. El contenido abierto queda verde con ●, incluso
 al buscar o volver a una sección. La marca indica elección, no playback exitoso.
 
+La información aparece debajo del video: resolución recibida, clasificación
+SD/HD/Full HD/UHD por altura, fps indicados por el stream y códec. Audio permite
+elegir entre pistas disponibles; Subtítulos permite elegir pista o Desactivados.
+Si no hay pistas, el selector queda deshabilitado; idioma sin etiqueta es explícito.
+Las filas son más compactas y la tipografía usa SF Pro si está instalada, luego
+Inter/Adwaita Sans y alternativas del sistema, sin instalar fuentes globalmente.
+
 ## Preparar otro entorno
 
 Para clonar, recuperar libmpv local y preparar cuenta/lanzador:
@@ -65,6 +72,8 @@ el mismo entorno. `./scripts/install-desktop.sh` instala el lanzador de usuario.
 |---|---|
 | `src/tecnomata_iptv/app.py` | Interfaz Qt y consultas en segundo plano |
 | `src/tecnomata_iptv/xtream.py` | Acceso, catálogos, episodios y URLs |
+| `src/tecnomata_iptv/media.py` | Formato de resolución e idiomas para el panel externo |
+| `src/tecnomata_iptv/widgets.py` | Menú acotado y marca persistente de contenido |
 | `src/tecnomata_iptv/player.py` | Video integrado por OpenGL/libmpv |
 | `src/tecnomata_iptv/diagnostics.py` | Errores saneados del motor, sin logs privados |
 | `src/tecnomata_iptv/catalog.py` | Caché de secciones, filtro local y episodios |

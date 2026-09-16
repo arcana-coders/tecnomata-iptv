@@ -66,3 +66,7 @@ La marca no afirma reproducción exitosa ni se guarda entre ejecuciones.
 35 pruebas pasan, incluyendo 200 categorías largas, scroll y cierres, y marca
 tras búsqueda/secciones/episodios. Smoke Wayland: overlay acotado e inspección
 de captura ficticia; video: 8 cambios, 127 frames, un motor/widget/ventana.
+
+Fase 4 avanza con información externa de resolución/fps/códec y selección de
+audio/subtítulos; lista más compacta y tipografía inspirada en macOS. 37 pruebas
+y smoke real de pistas ficticias pasan; validación del proveedor por Arturo pendiente.

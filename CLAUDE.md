@@ -22,7 +22,7 @@ IPTVnator. `CatalogCache` es por cuenta y sesión: precargar categorías/listas 
 live/vod/series en segundo plano, reutilizar al entrar/cambiar categoría y cachear
 episodios. Actualizar listas/cambiar/olvidar cuenta invalidan el caché.
 No bloquear navegación/reproducción por la precarga. Pruebas GUI de caché/cuenta:
-`QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q` (35 pruebas actualmente).
+`QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q` (37 pruebas actualmente).
 
 Cerrar trabajo actualizando `docs/SESSION.md`, el índice y desarrollo en
 `../asistente/projects/tecnomata-iptv/`, más `../asistente/journal.md`.
@@ -36,3 +36,10 @@ UX autorizado: una sola lista y reproductor al lado, apto para media pantalla
 ultrawide. No agregar columna persistente de categorías. widgets.py contiene
 overlay acotado con scroll/Cerrar/Escape/clic fuera y delegate de contenido
 elegido persistente por ID y contexto (episodios por serie), sólo en la sesión.
+
+Panel externo bajo video: media.py formatea datos, player.py lee video_params/
+container_fps/video_codec/track_list/aid/sid y emite media_changed al cambiar.
+Elegir pistas por ID, nunca posición. No inventar idiomas/resolución desde nombres.
+Reset al abrir/detener; controles deshabilitados si no hay pistas. OSD/OSC apagados
+(sí se renderizan subtítulos). Tipografía Qt: configure_appearance en app.py.
+Validación real ficticia: scripts/smoke_tracks.py y runtime/tracks-demo.mkv.

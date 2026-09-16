@@ -7,7 +7,18 @@ y serie reproducidos correctamente con su proveedor en la versión corregida.
 Fase 4 iniciada con precarga/caché de tres secciones y cuenta recordada en Linux.
 Prototipo funcional, todavía sin fichas, portadas, EPG, favoritos ni progreso.
 
-## Último cambio: categorías y marca de contenido
+## Último cambio: información, pistas y tipografía
+
+Panel bajo video: resolución recibida, fps declarados y códec; audio y subtítulos
+seleccionables por ID (subtítulos también Desactivados). Ausencias explícitas.
+37 pruebas pasan; smoke_tracks.py real Wayland: 640×360/25fps, audios Español y
+English, subtítulo activo/desactivado y limpieza al detener. Captura inspeccionada.
+Lista compactada 14→8 px de padding vertical; toda la app con Adwaita Sans en
+este equipo, fallback SF Pro/Inter si instalados. Neutros y jerarquía Apple.
+No instalar SF Pro ni activar transparencia. User validation del servicio pendiente.
+Cómo generar fixture y repetir: architecture.md, sección Información externa.
+
+## Histórico: categorías y marca de contenido
 
 Arturo pide conservar una sola lista por su uso en media pantalla ultrawide.
 Categorías usa overlay interno acotado con scroll, Cerrar, Escape y clic fuera;
@@ -106,7 +117,7 @@ Lanzador local instalado por `scripts/install-desktop.sh`.
 1. Guardar cuenta real desde el formulario y comprobar reapertura automática.
 2. Verificar precarga y cambio de sección sin volver a cargar con el catálogo real.
 3. Completar fase 4: portadas/fichas, selector de temporadas, favoritos, EPG,
-   progreso y controles de seek/audio/subtítulos.
+   progreso y controles de seek; audio/subtítulos ya implementados, validar proveedor.
 4. Fase 5: reconexión/cierre/catálogos grandes y empaquetado. Gitea ya preparado
    para preservar el avance; respaldos externos adicionales por definir.
 

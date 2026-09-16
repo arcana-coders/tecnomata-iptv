@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Qt, QTimer
-from PySide6.QtGui import QShortcut, QKeySequence
+from PySide6.QtGui import QShortcut, QKeySequence, QFont, QFontDatabase
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
     QHBoxLayout, QLabel, QPushButton, QLineEdit, QComboBox, QListWidget,
     QListWidgetItem, QSplitter, QSlider, QDialog, QFormLayout, QDialogButtonBox, QCheckBox)
@@ -14,6 +14,7 @@ from .xtream import Account, XtreamClient, ServiceError
 from .player import VideoWidget
 from .catalog import CatalogCache, KINDS
 from .accounts import AccountStore, StorageError
+from .media import describe_video, track_label
 from .widgets import CategoryComboBox, ChosenContentDelegate, CHOSEN_ROLE
 
 
@@ -175,6 +176,26 @@ class Window(QMainWindow):
         controls.addWidget(QLabel("Volumen"))
         controls.addWidget(volume)
         video_layout.addLayout(controls)
+        self.quality = QLabel("Sin reproducción")
+        self.quality.setObjectName("streamInfo")
+        self.quality.setWordWrap(True)
+        self.quality.setToolTip("Resolución del video recibido; fps indicados por el archivo o stream. La resolución no mide por sí sola la calidad de imagen.")
+        video_layout.addWidget(self.quality)
+        tracks = QHBoxLayout()
+        self.audio_tracks = QComboBox()
+        self.subtitle_tracks = QComboBox()
+        for label, box, kind in (("Audio", self.audio_tracks, "audio"),
+                                 ("Subtítulos", self.subtitle_tracks, "sub")):
+            box.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+            box.setMinimumContentsLength(10)
+            box.setMaximumWidth(400)
+            box.activated.connect(lambda index, box=box, kind=kind:
+                                  self.video.select_track(kind, box.itemData(index)))
+            tracks.addWidget(QLabel(label))
+            tracks.addWidget(box, 1)
+        video_layout.addLayout(tracks)
+        self.video.media_changed.connect(self.update_media)
+        self.update_media({})
         self.splitter.addWidget(right)
         self.splitter.setSizes([350, 800])
         layout.addWidget(self.splitter, 1)
@@ -197,6 +218,25 @@ class Window(QMainWindow):
         self.section("live")
         if restore and not self.demo:
             QTimer.singleShot(0, self.restore_account)
+
+    def update_media(self, info):
+        self.quality.setText(describe_video(info))
+        for kind, box, selected in (("audio", self.audio_tracks, "aid"),
+                                    ("sub", self.subtitle_tracks, "sid")):
+            box.blockSignals(True)
+            box.clear()
+            rows = info.get(kind, [])
+            if kind == "sub":
+                box.addItem("Desactivados" if rows else "No disponibles", "no")
+            elif not rows:
+                box.addItem("No disponible", None)
+            for track in rows:
+                box.addItem(track_label(track), track["id"])
+            index = box.findData(info.get(selected))
+            box.setCurrentIndex(max(0, index))
+            box.setEnabled(bool(rows))
+            box.setToolTip(box.currentText())
+            box.blockSignals(False)
 
     def sync_busy(self):
         # Preloading must not lock browsing or playback of loaded sections.
@@ -499,17 +539,29 @@ class Window(QMainWindow):
 
 
 STYLE = """
-QWidget { background: #101827; color: #e5eaf3; font-size: 14px; }
-QLabel#brand { color: #72dac7; font-size: 22px; font-weight: bold; }
-QPushButton { background: #223149; border: 1px solid #34465e; border-radius: 8px; padding: 12px 18px; }
+QWidget { background: #191b20; color: #e5eaf3; font-size: 14px; }
+QLabel#brand { color: #72dac7; font-size: 18px; font-weight: bold; }
+QPushButton { background: #223149; border: 1px solid #34465e; border-radius: 8px; padding: 8px 14px; }
 QPushButton:hover { background: #304663; }
 QPushButton:checked { background: #17685e; border-color: #72dac7; }
 QPushButton:disabled { color: #7b879b; }
-QLineEdit, QComboBox { background: #182438; border: 1px solid #34465e; border-radius: 7px; padding: 10px; }
-QListWidget { background: #182438; border: 1px solid #34465e; border-radius: 8px; }
-QListWidget::item { padding: 14px 10px; }
+QLineEdit, QComboBox { background: #23262d; border: 1px solid #34465e; border-radius: 7px; padding: 8px; }
+QListWidget { background: #23262d; border: 1px solid #34465e; border-radius: 8px; }
+QListWidget::item { padding: 8px 10px; }
 QListWidget::item:selected { background: #304663; }
+QLabel#streamInfo { color: #bac3d1; font-size: 13px; }
 """
+
+
+def configure_appearance(app):
+    available = set(QFontDatabase.families())
+    family = next((name for name in ("SF Pro Text", "SF Pro Display", "Inter", "Adwaita Sans", "Helvetica Neue", "Noto Sans")
+                   if name in available), app.font().family())
+    font = QFont(family)
+    font.setPointSizeF(10.5)
+    app.setFont(font)
+    app.setStyle("Fusion")
+    app.setStyleSheet(STYLE)
 
 
 def main():
@@ -521,8 +573,7 @@ def main():
     app = QApplication(sys.argv[:1])
     app.setApplicationName("Tecnomata IPTV")
     app.setDesktopFileName("tecnomata-iptv")
-    app.setStyle("Fusion")
-    app.setStyleSheet(STYLE)
+    configure_appearance(app)
     window = Window(args.demo or bool(args.demo_file), args.demo_file)
     window.show()
     if args.quit_after:

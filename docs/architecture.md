@@ -72,3 +72,34 @@ La marca no afirma reproducción exitosa ni se guarda entre ejecuciones.
 35 pruebas pasan, incluyendo 200 categorías largas, scroll y cierres, y marca
 tras búsqueda/secciones/episodios. Smoke Wayland: overlay acotado e inspección
 de captura ficticia; video: 8 cambios, 127 frames, un motor/widget/ventana.
+
+## Información externa, pistas y tipografía — 2026-09-16
+
+Panel debajo del video, sin OSD informativo: resolución de video_params, nivel
+por altura, códec y container_fps. Los fps son declarados, pueden no ser fiables;
+resolución no garantiza calidad/bitrate. No usa HD/UHD del nombre del canal.
+Audio/Subtítulos muestran track_list, lang/title/codec e ID; seleccionan aid/sid
+por ID y subtítulos permiten no. Idioma ausente y pistas ausentes explícitos.
+Sólo propiedades permitidas en RAM; no amplía diagnósticos guardados ni registra
+metadata, URLs o respuestas reales. Inicio/cambio/stop limpia el panel. Actualiza
+por polling Qt y comparación, después de file-loaded, incluidos cambios de pistas.
+
+Interfaz usa una sola lista, padding vertical 8 px (antes 14), controles más
+compactos, colores neutros y jerarquía tipográfica inspirada en Apple. Se aplicó
+skill apple-design con criterio de escritorio/puntero, sin transparencia de ventana.
+configure_appearance elige SF Pro si existe, Inter, Adwaita Sans o fallback;
+en este Linux usa Adwaita Sans ya instalada. No incluye ni instala SF Pro.
+
+37 pruebas pasan. Smoke Wayland con MKV sintético: 640×360, 25 fps, dos audios
+spa/eng, subtítulo spa; cambios reales aid/sid, desactivar subtítulos y stop.
+Captura ficticia inspeccionada: panel fuera del video y subtítulos renderizados.
+Generar fixture (fuera de Git):
+
+```bash
+python -c 'from pathlib import Path; Path("runtime/demo-sub.srt").write_text("1\n00:00:00,000 --> 00:00:10,000\nSubtítulo de prueba\n")'
+ffmpeg -hide_banner -loglevel error -y -i runtime/demo-a.mp4 -f lavfi -i sine=frequency=440:duration=12 -f lavfi -i sine=frequency=880:duration=12 -i runtime/demo-sub.srt -map 0:v -map 1:a -map 2:a -map 3:s -c:v copy -c:a aac -c:s srt -metadata:s:a:0 language=spa -metadata:s:a:1 language=eng -metadata:s:s:0 language=spa -t 12 runtime/tracks-demo.mkv
+LD_LIBRARY_PATH="$PWD/runtime/libmpv/usr/lib64" .venv/bin/python scripts/smoke_tracks.py
+```
+
+Referencias: [MPV propiedades](https://mpv.io/manual/stable/#property-list),
+[Apple tipografía](https://developer.apple.com/design/human-interface-guidelines/typography).
