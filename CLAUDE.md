@@ -1,6 +1,9 @@
 # Contexto operativo — Tecnomata IPTV
 
 Leer `README.md`, `docs/SESSION.md` y `docs/plan.md` antes de trabajar.
+Repo privado Gitea arturo/tecnomata-iptv; remoto gitea, rama main. Push explícito
+autorizado por Arturo para respaldar el avance mientras prueba la app.
+Instalación desde clone limpio en docs/install-fedora.md.
 Este repo contiene una app personal Linux autorizada por Arturo; avanzar por fases
 con evidencia y dejar punto de reanudación. Qt/PySide6 + python-mpv + libmpv,
 con API Xtream para TV, películas y series. No se busca equivalencia completa ni
@@ -24,4 +27,7 @@ No bloquear navegación/reproducción por la precarga. Pruebas GUI de caché/cue
 Cerrar trabajo actualizando `docs/SESSION.md`, el índice y desarrollo en
 `../asistente/projects/tecnomata-iptv/`, más `../asistente/journal.md`.
 No marcar una fase como validada con el proveedor si únicamente hay pruebas
-simuladas. El repo Git es local hasta configurar remoto; no inventar un push.
+simuladas. Arturo confirma playback real de TV/cambios, película y serie.
+Precarga/cuenta recordada tienen 33 pruebas y prueba de keyring real; validación
+del último UX por Arturo en curso. No reiniciar la app durante sus pruebas por
+una tarea de documentación/push. Comprobar HEAD local contra gitea/main al cerrar.

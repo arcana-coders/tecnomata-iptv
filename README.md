@@ -10,6 +10,9 @@ Nombre, código y recursos propios; no utiliza recursos de Smarters.
 - [Documento temático](../asistente/projects/tecnomata-iptv/desarrollo.md)
 - [Alcance y fases](docs/plan.md)
 - [Estado y cómo retomar](docs/SESSION.md)
+- [Instalación/recuperación en Fedora](docs/install-fedora.md)
+- Gitea privado: [arturo/tecnomata-iptv](http://192.168.1.175:3000/arturo/tecnomata-iptv), rama `main`.
+- Memoria en Gitea: [índice del proyecto](http://192.168.1.175:3000/arturo/asistente/src/branch/master/projects/tecnomata-iptv/index.md).
 
 ## Ejecutar
 
@@ -32,6 +35,10 @@ Doble clic o Enter abre el contenido. F alterna pantalla completa; Escape sale.
 Las series primero abren su lista de episodios, identificados por temporada.
 
 ## Preparar otro entorno
+
+Para clonar, recuperar libmpv local y preparar cuenta/lanzador:
+[guía Fedora](docs/install-fedora.md). Git conserva el código; dependencias y
+secret de GNOME Keyring se preparan localmente.
 
 Python >=3.11, libmpv y OpenGL funcional. En Fedora, el paquete del sistema es
 `mpv-libs`; instalarlo requiere privilegios del usuario. En este equipo se utiliza

@@ -35,7 +35,7 @@ Evidencia actual:
 - App nueva abierta; introducir cuenta una vez con Recordar activado para guardar
   la cuenta real, que la versión anterior mantenía únicamente en memoria.
 
-## Evidencia
+## Histórico: evidencia inicial
 
 - Fedora 44, Python 3.14.6, PySide6 6.11.2, python-mpv 1.0.8, libmpv 0.41.
 - `.venv/bin/pytest -q`: 14 passed.
@@ -95,7 +95,8 @@ Lanzador local instalado por `scripts/install-desktop.sh`.
 2. Verificar precarga y cambio de sección sin volver a cargar con el catálogo real.
 3. Completar fase 4: portadas/fichas, selector de temporadas, favoritos, EPG,
    progreso y controles de seek/audio/subtítulos.
-4. Fase 5: reconexión/cierre/catálogos grandes, empaquetado y remoto de respaldo.
+4. Fase 5: reconexión/cierre/catálogos grandes y empaquetado. Gitea ya preparado
+   para preservar el avance; respaldos externos adicionales por definir.
 
 ## Repetir prueba gráfica
 
@@ -119,11 +120,15 @@ Para entorno reproducible: `.venv/bin/pip install -r requirements.lock`, despué
 - Cierre durante consulta pide esperar a que termine para evitar destruir el worker.
 - Credenciales en memoria y en requests/URLs requeridas por Xtream. HTTP sin TLS
   depende de la URL del proveedor; no inventar HTTPS ni desactivar validación TLS.
-- Repo con Git y commit local; remoto todavía no configurado. La memoria tenía
-  cambios anteriores de otras tareas y no se mezclaron en este commit.
+- Repo privado Gitea `arturo/tecnomata-iptv`, remoto `gitea`, rama `main`.
+  Memoria padre en `arturo/asistente`, rama `master` (remoto local `origin`).
+  Se documenta y sube el avance mientras Arturo prueba precarga/cuenta; no
+  reiniciar la app por esta tarea. Cambios previos ajenos quedan fuera del commit.
 
 ## Documentación padre
 
 [Índice](../../asistente/projects/tecnomata-iptv/index.md) →
 [desarrollo](../../asistente/projects/tecnomata-iptv/desarrollo.md) →
 [README](../README.md) → este estado y código.
+
+Instalación/recuperación desde Gitea en [guía Fedora](install-fedora.md).
