@@ -49,3 +49,20 @@ fecha ni equivalencia completa con Smarters sin validación real.
 Si la fase 2 falla en Wayland/OpenGL, resolver el motor antes de pulir la interfaz.
 Si fase 3 falla, aislar API, transporte y formato antes de agregar funciones.
 No convertir esta herramienta de ocio en una prioridad comercial del ecosistema.
+
+## UX de categorías y contenido elegido — 2026-09-16
+
+Una sola lista a la izquierda y video ocupando el resto, por uso de Arturo en
+media pantalla ultrawide. `widgets.py` abre categorías como overlay hijo de
+la ventana: ancho del selector, altura máxima 340 px y límites del host. Nombres
+largos se abrevian; scroll vertical, Cerrar, Escape y clic fuera. Se cierra al
+redimensionar/desactivar la ventana. No depende de posicionar ventanas Wayland.
+
+El delegate dibuja verde, borde y ● para contenido abierto. Identidad stream_id
+o series_id por sección, episodios por serie; conserva marca al filtrar/volver,
+y se limpia al cambiar/olvidar cuenta. La selección de teclado tiene otro color.
+La marca no afirma reproducción exitosa ni se guarda entre ejecuciones.
+
+35 pruebas pasan, incluyendo 200 categorías largas, scroll y cierres, y marca
+tras búsqueda/secciones/episodios. Smoke Wayland: overlay acotado e inspección
+de captura ficticia; video: 8 cambios, 127 frames, un motor/widget/ventana.

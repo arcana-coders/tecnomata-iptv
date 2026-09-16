@@ -33,6 +33,10 @@ en RAM durante la sesión. Secciones/categorías no vuelven a consultar el prove
 «Actualizar listas» renueva los tres catálogos y los episodios guardados en RAM.
 Doble clic o Enter abre el contenido. F alterna pantalla completa; Escape sale.
 Las series primero abren su lista de episodios, identificados por temporada.
+Se conserva una sola lista a la izquierda. Categorías abre un menú acotado al
+ancho del selector y al interior de la ventana, con scroll y Cerrar; Escape o
+clic fuera también lo cierran. El contenido abierto queda verde con ●, incluso
+al buscar o volver a una sección. La marca indica elección, no playback exitoso.
 
 ## Preparar otro entorno
 

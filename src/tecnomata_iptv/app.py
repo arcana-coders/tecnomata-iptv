@@ -14,6 +14,7 @@ from .xtream import Account, XtreamClient, ServiceError
 from .player import VideoWidget
 from .catalog import CatalogCache, KINDS
 from .accounts import AccountStore, StorageError
+from .widgets import CategoryComboBox, ChosenContentDelegate, CHOSEN_ROLE
 
 
 class Signals(QObject):
@@ -89,6 +90,8 @@ class Window(QMainWindow):
         self.pending_section = None
         self.failed_sections = set()
         self.category_choices = {}
+        self.chosen = {}
+        self.current_series_id = None
         self.demo = demo
         self.demo_files = list(demo_files)
         self.kind = "live"
@@ -126,7 +129,7 @@ class Window(QMainWindow):
             nav.addWidget(button)
         layout.addWidget(self.navigation)
         filters = QHBoxLayout()
-        self.category = QComboBox()
+        self.category = CategoryComboBox()
         self.category.addItem("Todas las categorías", None)
         self.category.currentIndexChanged.connect(self.load_catalog)
         self.search = QLineEdit()
@@ -145,6 +148,7 @@ class Window(QMainWindow):
         layout.addLayout(filters)
         self.splitter = QSplitter()
         self.items = QListWidget()
+        self.items.setItemDelegate(ChosenContentDelegate(self.items))
         self.items.itemActivated.connect(self.activate)
         self.splitter.addWidget(self.items)
         right = QWidget()
@@ -295,6 +299,7 @@ class Window(QMainWindow):
             self.forget_button.setVisible(remembered or note.startswith("No se pudo borrar"))
             self.failed_sections.clear()
             self.category_choices.clear()
+            self.chosen.clear()
             self.demo = False
             self.connect_button.setText("Cambiar servicio")
             self.section(self.kind)
@@ -310,6 +315,7 @@ class Window(QMainWindow):
             self.saved_account = None
             self.failed_sections.clear()
             self.category_choices.clear()
+            self.chosen.clear()
             self.forget_button.hide()
             self.account_note.setText("Cuenta olvidada.")
             self.connect_button.setText("Conectar mi servicio")
@@ -407,6 +413,21 @@ class Window(QMainWindow):
         self.filter_rows()
         self.status.setText(f"{len(rows)} elementos · doble clic o Enter para abrir")
 
+    def content_context(self):
+        return ("episodes", self.current_series_id) if self.in_episodes else self.kind
+
+    def content_id(self, row):
+        key = "series_id" if self.kind == "series" and not self.in_episodes else "stream_id"
+        return str(row.get(key))
+
+    def choose_content(self, row):
+        self.chosen[self.content_context()] = self.content_id(row)
+        for index in range(self.items.count()):
+            item = self.items.item(index)
+            selected = self.content_id(item.data(Qt.ItemDataRole.UserRole)) == self.content_id(row)
+            item.setData(CHOSEN_ROLE, selected)
+            item.setToolTip("Contenido elegido" if selected else item.text())
+
     def filter_rows(self):
         query = self.search.text().casefold().strip()
         self.items.clear()
@@ -415,12 +436,17 @@ class Window(QMainWindow):
             if query in name.casefold():
                 item = QListWidgetItem(name)
                 item.setData(Qt.ItemDataRole.UserRole, row)
+                selected = self.chosen.get(self.content_context()) == self.content_id(row)
+                item.setData(CHOSEN_ROLE, selected)
+                item.setToolTip("Contenido elegido" if selected else name)
                 self.items.addItem(item)
 
     def activate(self, item):
         row = item.data(Qt.ItemDataRole.UserRole)
         if self.kind == "series" and not self.in_episodes:
             def loaded(episodes):
+                self.choose_content(row)
+                self.current_series_id = str(row.get("series_id"))
                 self.in_episodes = True
                 self.sync_busy()
                 self.back.show()
@@ -448,6 +474,7 @@ class Window(QMainWindow):
             except ServiceError as exc:
                 self.show_error(str(exc))
                 return
+        self.choose_content(row)
         self.now.setText(str(row.get("name", "Reproduciendo")))
         self.video.play(url)
 
@@ -481,7 +508,7 @@ QPushButton:disabled { color: #7b879b; }
 QLineEdit, QComboBox { background: #182438; border: 1px solid #34465e; border-radius: 7px; padding: 10px; }
 QListWidget { background: #182438; border: 1px solid #34465e; border-radius: 8px; }
 QListWidget::item { padding: 14px 10px; }
-QListWidget::item:selected { background: #17685e; }
+QListWidget::item:selected { background: #304663; }
 """
 
 

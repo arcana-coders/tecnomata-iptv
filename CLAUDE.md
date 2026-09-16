@@ -22,7 +22,7 @@ IPTVnator. `CatalogCache` es por cuenta y sesión: precargar categorías/listas 
 live/vod/series en segundo plano, reutilizar al entrar/cambiar categoría y cachear
 episodios. Actualizar listas/cambiar/olvidar cuenta invalidan el caché.
 No bloquear navegación/reproducción por la precarga. Pruebas GUI de caché/cuenta:
-`QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q` (33 pruebas actualmente).
+`QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q` (35 pruebas actualmente).
 
 Cerrar trabajo actualizando `docs/SESSION.md`, el índice y desarrollo en
 `../asistente/projects/tecnomata-iptv/`, más `../asistente/journal.md`.
@@ -31,3 +31,8 @@ simuladas. Arturo confirma playback real de TV/cambios, película y serie.
 Precarga/cuenta recordada tienen 33 pruebas y prueba de keyring real; validación
 del último UX por Arturo en curso. No reiniciar la app durante sus pruebas por
 una tarea de documentación/push. Comprobar HEAD local contra gitea/main al cerrar.
+
+UX autorizado: una sola lista y reproductor al lado, apto para media pantalla
+ultrawide. No agregar columna persistente de categorías. widgets.py contiene
+overlay acotado con scroll/Cerrar/Escape/clic fuera y delegate de contenido
+elegido persistente por ID y contexto (episodios por serie), sólo en la sesión.

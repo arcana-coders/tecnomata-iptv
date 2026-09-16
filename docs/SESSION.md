@@ -7,7 +7,19 @@ y serie reproducidos correctamente con su proveedor en la versión corregida.
 Fase 4 iniciada con precarga/caché de tres secciones y cuenta recordada en Linux.
 Prototipo funcional, todavía sin fichas, portadas, EPG, favoritos ni progreso.
 
-## Último cambio: precarga y cuenta recordada
+## Último cambio: categorías y marca de contenido
+
+Arturo pide conservar una sola lista por su uso en media pantalla ultrawide.
+Categorías usa overlay interno acotado con scroll, Cerrar, Escape y clic fuera;
+no agrega sidebar. Contenido abierto marcado verde con ●, persistente por ID
+al buscar y volver. Episodios tienen contexto por serie; limpiar al cambiar cuenta.
+Código: widgets.py y app.py. Prueba nueva: tests/test_selection_gui.py.
+
+Evidencia: 35 pruebas pasan; overlay real Wayland con 200 nombres largos dentro
+de ventana y captura ficticia inspeccionada. Smoke video: 8 cambios, 127 frames,
+mismo motor/widget, una ventana. Falta confirmación de Arturo del nuevo UX real.
+
+## Histórico: precarga y cuenta recordada
 
 Al autenticar, CatalogCache precarga categorías/listas de live/vod/series en
 segundo plano. Al entrar a otra sección o filtrar categoría, reutiliza RAM:
