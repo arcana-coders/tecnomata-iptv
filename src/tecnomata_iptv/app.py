@@ -1,5 +1,7 @@
 import argparse
 import sys
+import json
+import os
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Qt, QTimer
@@ -129,6 +131,7 @@ class Window(QMainWindow):
         video_layout.addWidget(self.now)
         self.video = VideoWidget()
         self.video.failed.connect(self.show_error)
+        self.video.state_changed.connect(lambda message: self.status.setText(message))
         video_layout.addWidget(self.video, 1)
         controls = QHBoxLayout()
         for name, function in [("Pausa / seguir", self.video.toggle_pause),
@@ -154,6 +157,9 @@ class Window(QMainWindow):
         self.escape.activated.connect(self.exit_fullscreen)
         self.fkey = QShortcut(QKeySequence("F"), self)
         self.fkey.activated.connect(self.fullscreen)
+        self.diagnostic_timer = QTimer(self)
+        self.diagnostic_timer.timeout.connect(self.save_diagnostic)
+        self.diagnostic_timer.start(1000)
         self.section("live")
 
     def busy(self, value):
@@ -179,6 +185,22 @@ class Window(QMainWindow):
 
     def show_error(self, message):
         self.status.setText(message)
+
+    def save_diagnostic(self):
+        # Strictly whitelisted engine state: no account, URLs, names or raw logs.
+        path = Path(__file__).resolve().parents[2] / "runtime/playback-status.json"
+        data = {key: value for key, value in self.video.diagnostic.items()
+                if key in ("state", "failure", "http_status")}
+        data.update({"engine_initialized": self.video.engine is not None,
+                     "renderer_initialized": self.video.renderer is not None,
+                     "closed": self.video.closed, "frames": self.video.frames})
+        try:
+            path.parent.mkdir(exist_ok=True)
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w") as output:
+                json.dump(data, output)
+        except OSError:
+            pass
 
     def login(self):
         dialog = Login(self)

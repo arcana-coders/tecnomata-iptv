@@ -10,6 +10,11 @@
   embedding por identificador X11, para funcionar con Wayland nativo.
 - Callbacks de render notifican a Qt mediante señal encolada; dibujo con contexto
   OpenGL activo. Liberar render context antes de terminar el motor.
+- Playback usa User-Agent de reproductor VLC, timeout de 20 s y ytdl desactivado
+  para URLs IPTV directas. Decodificación por software durante validación inicial.
+- Eventos python-mpv pueden contener bytes; normalizarlos antes de comparar.
+  Logs del motor sólo se convierten a códigos HTTP/TLS/red/codec permitidos;
+  no se guardan los mensajes originales ni URLs. Estado saneado en runtime.
 - Credenciales y respuestas en RAM. SQLite para favoritos/progreso y keyring para
   recordar credenciales se evalúan en fase 4; no persistir contraseñas en SQLite.
 

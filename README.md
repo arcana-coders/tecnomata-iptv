@@ -50,10 +50,14 @@ el mismo entorno. `./scripts/install-desktop.sh` instala el lanzador de usuario.
 | `src/tecnomata_iptv/app.py` | Interfaz Qt y consultas en segundo plano |
 | `src/tecnomata_iptv/xtream.py` | Acceso, catálogos, episodios y URLs |
 | `src/tecnomata_iptv/player.py` | Video integrado por OpenGL/libmpv |
+| `src/tecnomata_iptv/diagnostics.py` | Errores saneados del motor, sin logs privados |
 | `tests/` | Pruebas de contrato con proveedor simulado |
 | `scripts/` | Arranque y verificación gráfica |
 | `docs/` | Contrato, fases, decisiones y punto de reanudación |
 | `runtime/` | Dependencias locales y videos de prueba; fuera de Git |
+
+[Diagnóstico de reproducción](docs/playback-troubleshooting.md) explica las
+pruebas de red y el estado saneado en `runtime/playback-status.json`.
 
 ## Reglas operativas
 

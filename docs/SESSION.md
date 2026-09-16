@@ -3,7 +3,9 @@
 ## Estado
 
 Fases 0 y 1 completas; fase 2 validada con videos locales en Wayland.
-Fase 3 pendiente de conectar el proveedor de Arturo desde la app.
+Fase 3 en validación: Arturo confirma acceso y listas reales de canales/películas,
+pero reporta pantalla sin reproducción. La versión corregida está abierta para
+repetir el intento; reproducción del proveedor todavía sin confirmar.
 Prototipo funcional, todavía sin fichas, portadas, EPG, favoritos ni progreso.
 
 ## Evidencia
@@ -23,6 +25,31 @@ Prototipo funcional, todavía sin fichas, portadas, EPG, favoritos ni progreso.
 - Captura local inspeccionada en `runtime/prototype.png` (fuera de Git).
 - RPM libmpv oficial: `rpm -K` indica digests signatures OK. Copia local, sin sudo.
 
+## Corrección tras primera prueba real
+
+Arturo reporta que conecta y carga catálogos, pero doble clic sólo cambia el título.
+Se confirma un bug de diagnóstico: python-mpv entrega `reason` como bytes y el
+prototipo comparaba con `"error"` str; se ocultaban fallos de reproducción.
+Esto explica el silencio del error, no prueba la causa del fallo del proveedor.
+
+Cambios: normalizar bytes; estados conectando/reproduciendo/pausa/final;
+clasificar errores HTTP/TLS/red/codec sin guardar texto privado; User-Agent de
+reproductor VLC; extracción ytdl deshabilitada para URLs directas. Hardware decode
+desactivado temporalmente para validar el pipeline OpenGL por software.
+
+Evidencia nueva:
+- 21 pruebas unitarias pasan, incluyendo reason bytes y saneamiento de errores.
+- `scripts/smoke_network.py` PASS: MPEG-TS H264/AAC por HTTP local, redirección 302,
+  imagen teal real y HTTP 403 visible. Sin requests del extractor web.
+- `scripts/smoke_gui.py` PASS después del cambio: 8 cambios, mismo motor/widget,
+  114 frames, una ventana y playlist de una entrada.
+- Estado permitido en `runtime/playback-status.json` (modo 600): sólo state,
+  failure/http_status, motor/render inicializados, closed y contador de frames.
+  Nunca cuenta, servidor, URL, nombre del contenido ni texto crudo de logs.
+
+No se accedió a datos privados de IPTVnator. Al reiniciar la app se pierde la cuenta
+porque no hay persistencia; Arturo debe introducirla en el formulario otra vez.
+
 ## Ejecutar ahora
 
 ```bash
@@ -37,7 +64,7 @@ Lanzador local instalado por `scripts/install-desktop.sh`.
 
 ## Seguir, en orden
 
-1. Validar cuenta real y categorías de las tres secciones.
+1. Repetir playback del proveedor en versión corregida y revisar estado saneado.
 2. Probar canal, película y episodio; registrar sólo resultados saneados.
 3. Cambiar de canal repetidamente; comprobar imagen/audio y ninguna ventana MPV.
 4. Verificar formatos/extensiones y EPG del proveedor; corregir incompatibilidades.

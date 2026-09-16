@@ -1,11 +1,13 @@
 """Render OpenGL de libmpv: no crea ventanas ni procesos mpv externos."""
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Signal, Qt, QTimer
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
+from .diagnostics import classify_error, failure_message, text_value
 
 
 class VideoWidget(QOpenGLWidget):
     redraw = Signal()
     failed = Signal(str)
+    state_changed = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -16,6 +18,10 @@ class VideoWidget(QOpenGLWidget):
         self.init_error = None
         self.closed = False
         self.frames = 0
+        self.diagnostic = {"state": "idle"}
+        self.poll = QTimer(self)
+        self.poll.timeout.connect(self.poll_state)
+        self.poll.start(250)
         self.redraw.connect(self.update, Qt.ConnectionType.QueuedConnection)
 
     def initializeGL(self):
@@ -24,7 +30,10 @@ class VideoWidget(QOpenGLWidget):
         try:
             import mpv
             self.engine = mpv.MPV(vo="libmpv", config=False, idle=True,
-                                  hwdec="auto-safe", terminal=False, volume=65,
+                                  hwdec="no", terminal=False, volume=65,
+                                  ytdl=False,
+                                  user_agent="VLC/3.0.21 LibVLC/3.0.21", network_timeout=20,
+                                  log_handler=self.engine_log, loglevel="warn",
                                   input_default_bindings=False, input_vo_keyboard=False)
             self.proc = mpv.MpvGlGetProcAddressFn(
                 lambda _ctx, name: int(self.context().getProcAddress(name)))
@@ -34,13 +43,19 @@ class VideoWidget(QOpenGLWidget):
             self.context().aboutToBeDestroyed.connect(self.dispose)
             @self.engine.event_callback("end-file")
             def ended(event):
-                if event.as_dict().get("reason") == "error":
-                    self.failed.emit("No se pudo reproducir este contenido. Revisa la conexión o prueba otro canal.")
+                reason = text_value(event.as_dict().get("reason"))
+                if reason == "error":
+                    self.diagnostic["state"] = "error"
+                    self.failed.emit(failure_message(self.diagnostic))
+                elif reason == "eof":
+                    self.diagnostic["state"] = "ended"
+                    self.state_changed.emit("Reproducción terminada")
             self._ended = ended
             if self.pending_url:
                 self.play(self.pending_url)
         except Exception:
             self.init_error = "No se pudo iniciar el video integrado. Revisa libmpv y el soporte OpenGL."
+            self.diagnostic = {"state": "error", "failure": "opengl"}
             self.failed.emit(self.init_error)
 
     def paintGL(self):
@@ -53,6 +68,8 @@ class VideoWidget(QOpenGLWidget):
 
     def play(self, url):
         self.pending_url = url
+        self.diagnostic = {"state": "loading"}
+        self.state_changed.emit("Conectando con el video…")
         if self.init_error:
             self.failed.emit(self.init_error)
         elif self.engine:
@@ -60,7 +77,27 @@ class VideoWidget(QOpenGLWidget):
                 self.engine.command("loadfile", url, "replace")
                 self.engine.pause = False
             except Exception:
+                self.diagnostic["state"] = "error"
                 self.failed.emit("No se pudo abrir el contenido seleccionado.")
+
+    def engine_log(self, prefix, level, message):
+        # Log text may include a URL with secrets. Keep only whitelisted codes.
+        diagnostic = classify_error(message)
+        if diagnostic:
+            self.diagnostic.update(diagnostic)
+
+    def poll_state(self):
+        if not self.engine or self.closed or self.diagnostic.get("state") not in ("loading", "playing", "paused"):
+            return
+        try:
+            position = self.engine.time_pos
+            if position is not None:
+                state = "paused" if self.engine.pause else "playing"
+                if self.diagnostic["state"] != state:
+                    self.diagnostic["state"] = state
+                    self.state_changed.emit("En pausa" if state == "paused" else "Reproduciendo")
+        except Exception:
+            pass
 
     def toggle_pause(self):
         if self.engine:
@@ -68,6 +105,8 @@ class VideoWidget(QOpenGLWidget):
 
     def stop(self):
         self.pending_url = None
+        self.diagnostic = {"state": "idle"}
+        self.state_changed.emit("Reproducción detenida")
         if self.engine:
             self.engine.command("stop")
 
@@ -79,6 +118,7 @@ class VideoWidget(QOpenGLWidget):
         if self.closed:
             return
         self.closed = True
+        self.poll.stop()
         self.makeCurrent()
         if self.renderer:
             self.renderer.update_cb = None
