@@ -2,11 +2,38 @@
 
 ## Estado
 
-Fases 0 y 1 completas; fase 2 validada con videos locales en Wayland.
-Fase 3 en validación: Arturo confirma acceso y listas reales de canales/películas,
-pero reporta pantalla sin reproducción. La versión corregida está abierta para
-repetir el intento; reproducción del proveedor todavía sin confirmar.
+Fases 0–3 completas: Arturo confirma canales, cambios entre canales, película
+y serie reproducidos correctamente con su proveedor en la versión corregida.
+Fase 4 iniciada con precarga/caché de tres secciones y cuenta recordada en Linux.
 Prototipo funcional, todavía sin fichas, portadas, EPG, favoritos ni progreso.
+
+## Último cambio: precarga y cuenta recordada
+
+Al autenticar, CatalogCache precarga categorías/listas de live/vod/series en
+segundo plano. Al entrar a otra sección o filtrar categoría, reutiliza RAM:
+cero requests nuevos. Categoría elegida conservada al volver. Episodios cacheados
+por serie. Actualizar listas invalida todo y repite la precarga; cambiar/olvidar
+cuenta sustituyen el caché completo. Fallar una sección no impide cargar las demás.
+Precarga no bloquea navegación ni reproducción de catálogos ya disponibles.
+
+Recordar mi cuenta activado por defecto. AccountStore guarda servidor/usuario/
+contraseña como un solo secret de GNOME Keyring, servicio tecnomata-iptv, identidad
+default-account. No archivos de credenciales ni backend plaintext. Sólo guardar
+después de auth exitosa. Arranque lee el almacén, autentica y precarga solo.
+Olvidar cuenta elimina el secret y cierra sesión. Desmarcar Recordar elimina
+lo guardado y permite usar sólo esta sesión. Fallos de almacén son visibles.
+
+Evidencia actual:
+- `QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q`: 33 passed.
+- Pruebas GUI: precarga de todas las secciones, navegación habilitada durante
+  precarga, regreso sin requests, filtros locales, episodios cacheados, refresh,
+  cuenta restaurada automáticamente y Olvidar/sólo sesión.
+- Almacén seguro real: guardar/recuperar una cuenta ficticia en servicio aislado,
+  comparar valores y borrar entrada de prueba: PASS; no se imprimió el secret.
+- Smoke de video integrado tras cambios: 8 cambios, 127 frames, motor/widget
+  compartidos y una sola ventana: PASS.
+- App nueva abierta; introducir cuenta una vez con Recordar activado para guardar
+  la cuenta real, que la versión anterior mantenía únicamente en memoria.
 
 ## Evidencia
 
@@ -25,7 +52,7 @@ Prototipo funcional, todavía sin fichas, portadas, EPG, favoritos ni progreso.
 - Captura local inspeccionada en `runtime/prototype.png` (fuera de Git).
 - RPM libmpv oficial: `rpm -K` indica digests signatures OK. Copia local, sin sudo.
 
-## Corrección tras primera prueba real
+## Histórico: corrección tras primera prueba real
 
 Arturo reporta que conecta y carga catálogos, pero doble clic sólo cambia el título.
 Se confirma un bug de diagnóstico: python-mpv entrega `reason` como bytes y el
@@ -47,8 +74,8 @@ Evidencia nueva:
   failure/http_status, motor/render inicializados, closed y contador de frames.
   Nunca cuenta, servidor, URL, nombre del contenido ni texto crudo de logs.
 
-No se accedió a datos privados de IPTVnator. Al reiniciar la app se pierde la cuenta
-porque no hay persistencia; Arturo debe introducirla en el formulario otra vez.
+No se accedió a datos privados de IPTVnator. En esa versión la cuenta sólo vivía
+en memoria; la versión actual incorpora el almacén seguro descrito arriba.
 
 ## Ejecutar ahora
 
@@ -59,18 +86,16 @@ cd /home/tecnomata/tecnomata/tecnomata-iptv
 
 Botón «Conectar mi servicio». Introducir URL del servidor, usuario y contraseña
 sin pegarlos en chat. TV/películas se reproducen con doble clic; series abren
-episodios primero. No se guardan credenciales al cerrar.
+episodios primero. Recordar mi cuenta guarda en GNOME Keyring y permite autoentrada.
 Lanzador local instalado por `scripts/install-desktop.sh`.
 
 ## Seguir, en orden
 
-1. Repetir playback del proveedor en versión corregida y revisar estado saneado.
-2. Probar canal, película y episodio; registrar sólo resultados saneados.
-3. Cambiar de canal repetidamente; comprobar imagen/audio y ninguna ventana MPV.
-4. Verificar formatos/extensiones y EPG del proveedor; corregir incompatibilidades.
-5. Completar fase 4: portadas/fichas, selector de temporadas, favoritos, EPG,
+1. Guardar cuenta real desde el formulario y comprobar reapertura automática.
+2. Verificar precarga y cambio de sección sin volver a cargar con el catálogo real.
+3. Completar fase 4: portadas/fichas, selector de temporadas, favoritos, EPG,
    progreso y controles de seek/audio/subtítulos.
-6. Fase 5: reconexión/cierre/catálogos grandes, empaquetado y remoto de respaldo.
+4. Fase 5: reconexión/cierre/catálogos grandes, empaquetado y remoto de respaldo.
 
 ## Repetir prueba gráfica
 
@@ -87,10 +112,10 @@ Para entorno reproducible: `.venv/bin/pip install -r requirements.lock`, despué
 
 ## Límites actuales
 
-- Sin prueba real de credenciales/contenido/EPG; contratos Xtream probados con mocks.
+- Playback real de las tres secciones confirmado por Arturo; EPG aún no validado.
 - Diseño inicial de listas; no experiencia final de Smarters.
 - Live usa `.ts`, VOD/series respetan `container_extension` si el API lo entrega.
-- No caché/paginación de grandes catálogos, descarga de imágenes ni keyring todavía.
+- Caché de sesión implementado; no caché de catálogo en disco, paginación ni imágenes todavía.
 - Cierre durante consulta pide esperar a que termine para evitar destruir el worker.
 - Credenciales en memoria y en requests/URLs requeridas por Xtream. HTTP sin TLS
   depende de la URL del proveedor; no inventar HTTPS ni desactivar validación TLS.

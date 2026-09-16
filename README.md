@@ -23,6 +23,11 @@ cd /home/tecnomata/tecnomata/tecnomata-iptv
 ```
 
 Conectar mi servicio abre el formulario de servidor, usuario y contraseña.
+«Recordar mi cuenta» está activado por defecto: guarda la cuenta en GNOME Keyring
+y conecta automáticamente al abrir la app. «Olvidar cuenta» la elimina.
+Después de conectar, los tres catálogos se precargan en segundo plano y se conservan
+en RAM durante la sesión. Secciones/categorías no vuelven a consultar el proveedor.
+«Actualizar listas» renueva los tres catálogos y los episodios guardados en RAM.
 Doble clic o Enter abre el contenido. F alterna pantalla completa; Escape sale.
 Las series primero abren su lista de episodios, identificados por temporada.
 
@@ -51,6 +56,8 @@ el mismo entorno. `./scripts/install-desktop.sh` instala el lanzador de usuario.
 | `src/tecnomata_iptv/xtream.py` | Acceso, catálogos, episodios y URLs |
 | `src/tecnomata_iptv/player.py` | Video integrado por OpenGL/libmpv |
 | `src/tecnomata_iptv/diagnostics.py` | Errores saneados del motor, sin logs privados |
+| `src/tecnomata_iptv/catalog.py` | Caché de secciones, filtro local y episodios |
+| `src/tecnomata_iptv/accounts.py` | Cuenta en Secret Service, sin fallback a archivos |
 | `tests/` | Pruebas de contrato con proveedor simulado |
 | `scripts/` | Arranque y verificación gráfica |
 | `docs/` | Contrato, fases, decisiones y punto de reanudación |
@@ -61,10 +68,13 @@ pruebas de red y el estado saneado en `runtime/playback-status.json`.
 
 ## Reglas operativas
 
-Credenciales sólo en memoria durante la sesión. No guardar listas reales, URLs de
+La cuenta recordada vive en el almacén seguro de Linux (servicio `tecnomata-iptv`,
+identidad `default-account`), nunca en archivos del repo. Sin recordar, sólo RAM.
+No guardar listas reales, URLs de
 reproducción, respuestas privadas ni logs HTTP en Git. No leer ni migrar datos de
 IPTVnator automáticamente. No alterar Hyprland o MPV como efecto de esta app.
-La persistencia de favoritos/progreso y el almacenamiento seguro de cuenta son
-fases posteriores. No considerar la conexión real validada por pasar mocks.
+Favoritos/progreso son fases posteriores. El proveedor real está validado por
+Arturo para canales y cambios, películas y series. Los cambios de caché/cuenta
+tienen pruebas propias y se validan en la versión nueva desde el formulario.
 
 Cadena: archivo → repo → documento temático → índice del proyecto → asistente.

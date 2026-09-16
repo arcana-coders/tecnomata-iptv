@@ -34,6 +34,13 @@ Cada sesión actualiza `SESSION.md` con qué está probado, qué falta y comando
 seguir. Si falta un insumo privado, continuar tareas independientes y dejar la
 validación dependiente explícitamente pendiente.
 
+## Estado de fases
+
+0–3 completas; Arturo confirma video real de canales (y cambios), película y serie.
+Fase 4 iniciada: precarga/caché en RAM de tres secciones y episodios, cuenta en
+GNOME Keyring y restauración automática implementadas. Fichas/portadas, temporadas
+navegables, favoritos, EPG, progreso y controles de pistas/seek siguen pendientes.
+
 ## Límites y criterio de cambio
 
 No incluye DRM, grabación, catch-up, múltiples cuentas ni publicación comercial

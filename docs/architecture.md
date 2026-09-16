@@ -3,8 +3,15 @@
 - Python, PySide6/Qt Widgets y python-mpv. Distribución inicial local.
 - `XtreamClient`: `player_api.php`, timeouts de 20 s, redirecciones desactivadas,
   validación de respuestas y URLs con componentes escapados. No logs privados.
-- Qt ejecuta consultas en QThreadPool, una consulta activa; controles de navegación
-  deshabilitados durante la operación. Categorías primero, catálogo después.
+- Qt ejecuta consultas en QThreadPool, una consulta activa. Operaciones de auth,
+  almacén seguro y episodios no cacheados bloquean controles de navegación;
+  la precarga de secciones mantiene navegación/reproducción habilitadas.
+- `CatalogCache` conserva categorías/listas de live/vod/series en RAM por cuenta.
+  Precarga una sección a la vez, prioriza la sección seleccionada para la próxima
+  tarea y no sobrescribe una sección/episodios visible con otra respuesta.
+  Filtro de categorías local; episodios cacheados por serie. Actualizar listas,
+  cambiar u olvidar cuenta sustituyen el caché completo. Fallos se reintentan sólo
+  con Actualizar listas; una sección fallida no impide precargar las demás.
 - `VideoWidget`: QOpenGLWidget con render API libmpv. Un MPV y render context por
   ventana. `loadfile ... replace` cambia el contenido. Sin subprocess MPV y sin
   embedding por identificador X11, para funcionar con Wayland nativo.
@@ -15,8 +22,15 @@
 - Eventos python-mpv pueden contener bytes; normalizarlos antes de comparar.
   Logs del motor sólo se convierten a códigos HTTP/TLS/red/codec permitidos;
   no se guardan los mensajes originales ni URLs. Estado saneado en runtime.
-- Credenciales y respuestas en RAM. SQLite para favoritos/progreso y keyring para
-  recordar credenciales se evalúan en fase 4; no persistir contraseñas en SQLite.
+- `AccountStore` usa explícitamente `keyring.backends.SecretService.Keyring`.
+  Toda la cuenta se guarda como un secret, servicio tecnomata-iptv, identidad
+  default-account. No JSON con credenciales en disco ni backends plaintext.
+  Después de autenticar: guardar/borrar según Recordar mi cuenta. Al arrancar:
+  leer el secret en worker, autenticar y precargar. Olvidar elimina el secret y
+  cierra la cuenta/caché. Error de almacén se informa y permite uso sólo en sesión.
+  GNOME Keyring real probado con entrada ficticia aislada y eliminada al terminar.
+  [Documentación primaria de keyring](https://github.com/jaraco/keyring).
+- SQLite para favoritos/progreso sigue pendiente; nunca contraseñas en SQLite.
 
 ## Dependencia local de este equipo
 

@@ -7,7 +7,7 @@ name = "tecnomata-iptv"
 version = "0.1.0"
 description = "Cliente IPTV personal para Linux, Qt y libmpv"
 requires-python = ">=3.11"
-dependencies = ["PySide6>=6.10,<7", "python-mpv>=1.0.8,<2", "httpx>=0.28,<1"]
+dependencies = ["PySide6>=6.10,<7", "python-mpv>=1.0.8,<2", "httpx>=0.28,<1", "keyring>=25,<26"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10"]
