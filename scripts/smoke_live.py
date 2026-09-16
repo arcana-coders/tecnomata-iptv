@@ -38,6 +38,7 @@ app = QApplication(sys.argv[:1])
 configure_appearance(app)
 window = Window(demo=True, restore=False)
 window.show()
+window.show_player()
 url = f'http://127.0.0.1:{server.server_port}/live.ts'
 checks = {'stage': 0, 'attempts': 0, 'engine': None}
 

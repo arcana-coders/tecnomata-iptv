@@ -37,6 +37,7 @@ threading.Thread(target=server.serve_forever, daemon=True).start()
 app = QApplication(sys.argv[:1])
 window = Window(True)
 window.show()
+window.show_player()
 base = f"http://127.0.0.1:{server.server_port}"
 messages = []
 errors = []

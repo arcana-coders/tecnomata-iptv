@@ -5,9 +5,29 @@
 Fases 0–3 completas: Arturo confirma canales, cambios entre canales, película
 y serie reproducidos correctamente con su proveedor en la versión corregida.
 Fase 4 iniciada con precarga/caché de tres secciones y cuenta recordada en Linux.
-Prototipo funcional, todavía sin fichas, portadas, EPG, favoritos ni progreso.
+Prototipo funcional, todavía sin fichas, portadas, EPG ni progreso; favoritos y recientes ya implementados.
 
-## Último cambio: detener real e Ir al directo
+## Último cambio: favoritos, recientes y diseño del ZIP
+
+Arturo pide favoritos/último reproducido y adaptar al ZIP en la raíz. Ver design.md:
+Inicio con mosaicos/datos reales y reproductor Metro oscuro plano azul/cian con
+una lista izquierda. Inter Variable oficial incluida, sólo Qt, con licencia OFL.
+Info/controles siguen fuera del video. F4 lista, Ctrl+K búsqueda. Preview del último
+cuadro en RAM sólo; no capturas reales en archivos ni paneles ficticios de DVR/red.
+
+LibraryStore SQLite local por cuenta (scope SHA256 sin secretos), modo600,
+favoritos TV/VOD/series/episodios y recientes de últimos100 exitosos/deduplicados.
+Añadir/quitar desde fila; colecciones comparten lista y permanecen al reproducir
+TV/VOD/episodio; serie abre episodios. Historial al comenzar, no al intentar abrir.
+Cambio/olvido aíslan/ocultan, no borran DB; reapertura conserva todo. Aún no minuto VOD.
+
+45 pruebas pasan; smoke_library real reproduce y registra, favorites siguen
+visibles y ambas colecciones sobreviven cierre/reopen. Capturas ficticias home/
+player inspeccionadas. Smoke_gui 8 cambios/131frames/mismo motor/widget/ventana;
+tracks y live PASS después de rediseño. Wheel contiene Inter y OFL. ZIP original
+versionado sin modificar para recuperar referencia. Arturo valida nuevo UX real.
+
+## Histórico: detener real e Ir al directo
 
 Arturo reporta Detener aparentemente pausa y pide ponerse al corriente del live.
 Stop ya mandaba el comando de cierre, pero el framebuffer podía conservar el
@@ -131,7 +151,7 @@ Lanzador local instalado por `scripts/install-desktop.sh`.
 
 1. Guardar cuenta real desde el formulario y comprobar reapertura automática.
 2. Verificar precarga y cambio de sección sin volver a cargar con el catálogo real.
-3. Completar fase 4: portadas/fichas, selector de temporadas, favoritos, EPG,
+3. Completar fase 4: portadas/fichas, selector de temporadas, EPG,
    progreso y controles de seek; audio/subtítulos ya implementados, validar proveedor.
 4. Fase 5: reconexión/cierre/catálogos grandes y empaquetado. Gitea ya preparado
    para preservar el avance; respaldos externos adicionales por definir.

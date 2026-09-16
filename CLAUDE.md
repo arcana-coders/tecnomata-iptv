@@ -22,7 +22,7 @@ IPTVnator. `CatalogCache` es por cuenta y sesión: precargar categorías/listas 
 live/vod/series en segundo plano, reutilizar al entrar/cambiar categoría y cachear
 episodios. Actualizar listas/cambiar/olvidar cuenta invalidan el caché.
 No bloquear navegación/reproducción por la precarga. Pruebas GUI de caché/cuenta:
-`QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q` (39 pruebas actualmente).
+`QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q` (45 pruebas actualmente).
 
 Cerrar trabajo actualizando `docs/SESSION.md`, el índice y desarrollo en
 `../asistente/projects/tecnomata-iptv/`, más `../asistente/journal.md`.
@@ -50,3 +50,17 @@ Ir al directo sólo para playing_kind live; reconnect_current hace stop+loadfile
 replace de fuente activa en RAM y despausa, mismo motor. No usar pestaña ni fila
 seleccionada para decidir qué canal reconectar. Sin prometer retraso cero.
 Prueba real: scripts/smoke_live.py, runtime/network.ts ficticio y HTTP local.
+
+Diseño vigente: docs/design.md y ZIP original en raíz, instrucción explícita
+prevalece sobre estética Apple anterior (Metro plano/recto/azul/cian). Inicio y
+reproductor Qt, una sola lista; nunca poner telemetry/control fuera de alcance
+como decoración funcional. Inter 4.1 incluida en assets/fonts con licencia OFL;
+QFontDatabase la carga privadamente, pyproject incluye package-data.
+LibraryStore SQLite local XDG_DATA_HOME/tecnomata-iptv/library.sqlite3, modo600.
+Scope SHA256 servidor+usuario, excluye password; IDs/nombres/kind/parent/ext, sin
+URLs/secretos. Toggle favoritos; últimos100 exitosos sin duplicados. Registrar
+tras file-loaded + time_pos, no al intentar abrir; polling no declara playing
+antes de media_ready. Cambiar cuenta aísla; Olvidar oculta, no borra biblioteca.
+Colecciones siguen visibles al abrir TV/VOD/episodio; serie abre episodios.
+Pruebas aisladas con SQLite temporal/memory, nunca historial real. Smoke nuevo
+scripts/smoke_library.py; capturas únicamente ficticias. Progreso VOD pendiente.

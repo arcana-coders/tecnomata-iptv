@@ -106,6 +106,8 @@ class VideoWidget(QOpenGLWidget):
         if not self.engine or self.closed or self.diagnostic.get("state") not in ("loading", "playing", "paused"):
             return
         self.read_media()
+        if not self.media_ready:
+            return
         try:
             position = self.engine.time_pos
             if position is not None:

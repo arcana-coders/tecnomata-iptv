@@ -38,8 +38,8 @@ validación dependiente explícitamente pendiente.
 
 0–3 completas; Arturo confirma video real de canales (y cambios), película y serie.
 Fase 4 iniciada: precarga/caché en RAM de tres secciones y episodios, cuenta en
-GNOME Keyring y restauración automática implementadas. Fichas/portadas, temporadas
-navegables, favoritos, EPG, progreso y controles de pistas/seek siguen pendientes.
+GNOME Keyring y restauración automática implementadas. Favoritos/recientes y audio/subtítulos implementados. Fichas/portadas, temporadas
+navegables, EPG, progreso y seek siguen pendientes.
 
 ## Límites y criterio de cambio
 
@@ -74,3 +74,7 @@ y smoke real de pistas ficticias pasan; validación del proveedor por Arturo pen
 Stop con pantalla negra e Ir al directo (reconexión de fuente live activa)
 implementados; 39 pruebas y smoke real de cierre HTTP/framebuffer pasan.
 No promete eliminar el retraso del proveedor; Arturo valida con canal deportivo.
+
+Inicio/reproductor adaptados al ZIP Metro de Arturo: ver design.md. Favoritos
+y últimos100 exitosos guardados localmente por cuenta; 45 pruebas, smoke real de
+biblioteca y captura ficticia. Progreso/portadas/EPG pendientes; no telemetry falsa.

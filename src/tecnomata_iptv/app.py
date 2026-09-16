@@ -7,15 +7,16 @@ from pathlib import Path
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Qt, QTimer
 from PySide6.QtGui import QShortcut, QKeySequence, QFont, QFontDatabase
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
-    QHBoxLayout, QLabel, QPushButton, QLineEdit, QComboBox, QListWidget,
+    QHBoxLayout, QLabel, QPushButton, QLineEdit, QComboBox, QListWidget, QGridLayout, QSizePolicy,
     QListWidgetItem, QSplitter, QSlider, QDialog, QFormLayout, QDialogButtonBox, QCheckBox)
 
 from .xtream import Account, XtreamClient, ServiceError
 from .player import VideoWidget
 from .catalog import CatalogCache, KINDS
 from .accounts import AccountStore, StorageError
+from .library import LibraryStore, LibraryError, account_scope
 from .media import describe_video, track_label
-from .widgets import CategoryComboBox, ChosenContentDelegate, CHOSEN_ROLE
+from .widgets import CategoryComboBox, ChosenContentDelegate, CHOSEN_ROLE, HomeTile
 
 
 class Signals(QObject):
@@ -78,11 +79,21 @@ class Login(QDialog):
 
 
 class Window(QMainWindow):
-    def __init__(self, demo=False, demo_files=(), restore=True, account_store=None):
+    def __init__(self, demo=False, demo_files=(), restore=True, account_store=None, library_store=None):
         super().__init__()
         self.setWindowTitle("Tecnomata IPTV")
         self.setObjectName("tecnomata-iptv")
         self.resize(1200, 760)
+        self.library_error = None
+        try:
+            self.library = library_store or LibraryStore(':memory:' if demo else None)
+        except LibraryError as exc:
+            self.library = None
+            self.library_error = str(exc)
+        self.library_scope = 'demo' if demo else None
+        self.collection_view = None
+        self.pending_history = None
+        self.current_series_name = ''
         self.client = None
         self.cache = None
         self.account_store = account_store or AccountStore()
@@ -105,11 +116,24 @@ class Window(QMainWindow):
         root = QWidget()
         self.setCentralWidget(root)
         layout = QVBoxLayout(root)
-        layout.setContentsMargins(24, 22, 24, 22)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(8)
         top = QHBoxLayout()
-        title = QLabel("TECNOMATA  /  IPTV")
+        title = QLabel("TECNOMATA IPTV")
         title.setObjectName("brand")
         top.addWidget(title)
+        self.home_button = QPushButton("Inicio")
+        self.home_button.clicked.connect(self.show_home)
+        top.addWidget(self.home_button)
+        self.player_button = QPushButton("Reproductor")
+        self.player_button.clicked.connect(self.show_player)
+        top.addWidget(self.player_button)
+        self.list_button = QPushButton("Lista")
+        self.list_button.setCheckable(True)
+        self.list_button.setChecked(True)
+        self.list_button.setToolTip("Mostrar u ocultar la lista (F4)")
+        self.list_button.clicked.connect(self.toggle_list)
+        top.addWidget(self.list_button)
         top.addStretch()
         self.connect_button = QPushButton("Conectar mi servicio")
         self.connect_button.clicked.connect(self.login)
@@ -121,16 +145,17 @@ class Window(QMainWindow):
         layout.addLayout(top)
         self.navigation = QWidget()
         nav = QHBoxLayout(self.navigation)
-        nav.setContentsMargins(0, 12, 0, 12)
+        nav.setContentsMargins(0, 0, 0, 0)
+        nav.setSpacing(2)
         self.tabs = {}
-        for kind, name in [("live", "TV en vivo"), ("vod", "Películas"), ("series", "Series")]:
+        for kind, name in [("live", "VIVO"), ("vod", "PELIS"), ("series", "SERIES")]:
             button = QPushButton(name)
             button.setCheckable(True)
             button.clicked.connect(lambda checked=False, kind=kind: self.section(kind))
             self.tabs[kind] = button
             nav.addWidget(button)
-        layout.addWidget(self.navigation)
-        filters = QHBoxLayout()
+        filters = QVBoxLayout()
+        filters.setSpacing(6)
         self.category = CategoryComboBox()
         self.category.addItem("Todas las categorías", None)
         self.category.currentIndexChanged.connect(self.load_catalog)
@@ -140,28 +165,52 @@ class Window(QMainWindow):
         self.back = QPushButton("Volver a series")
         self.back.clicked.connect(lambda: self.section("series"))
         self.back.hide()
-        filters.addWidget(self.category, 1)
-        filters.addWidget(self.search, 2)
+        filters.addWidget(self.category)
+        filters.addWidget(self.search)
         filters.addWidget(self.back)
         self.refresh_button = QPushButton("Actualizar listas")
         self.refresh_button.clicked.connect(self.refresh_catalogs)
         self.refresh_button.setEnabled(False)
-        filters.addWidget(self.refresh_button)
-        layout.addLayout(filters)
+        top.addWidget(self.refresh_button)
         self.splitter = QSplitter()
         self.items = QListWidget()
         self.items.setItemDelegate(ChosenContentDelegate(self.items))
+        self.items.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.items.setTextElideMode(Qt.TextElideMode.ElideRight)
         self.items.itemActivated.connect(self.activate)
-        self.splitter.addWidget(self.items)
+        self.left_panel = QWidget()
+        self.left_panel.setObjectName("sidebar")
+        left = QVBoxLayout(self.left_panel)
+        left.setContentsMargins(8, 8, 8, 8)
+        left.setSpacing(6)
+        self.list_heading = QLabel("■  TV EN VIVO")
+        self.list_heading.setObjectName("listHeading")
+        left.addWidget(self.list_heading)
+        left.addWidget(self.navigation)
+        left.addLayout(filters)
+        collections = QHBoxLayout()
+        self.favorites_button = QPushButton("★ Favoritos")
+        self.recent_button = QPushButton("↺ Recientes")
+        for button, view in ((self.favorites_button, 'favorites'), (self.recent_button, 'recent')):
+            button.setCheckable(True)
+            button.clicked.connect(lambda checked=False, view=view: self.show_collection(view))
+            collections.addWidget(button)
+        left.addLayout(collections)
+        left.addWidget(self.items, 1)
+        self.favorite_button = QPushButton("☆ Añadir a favoritos")
+        self.favorite_button.clicked.connect(self.toggle_favorite)
+        left.addWidget(self.favorite_button)
+        self.items.currentItemChanged.connect(self.sync_favorite)
+        self.splitter.addWidget(self.left_panel)
         right = QWidget()
         video_layout = QVBoxLayout(right)
-        video_layout.setContentsMargins(12, 0, 0, 0)
+        video_layout.setContentsMargins(8, 0, 0, 0)
         self.now = QLabel("Selecciona un canal, película o episodio")
         self.now.setWordWrap(True)
         video_layout.addWidget(self.now)
         self.video = VideoWidget()
         self.video.failed.connect(self.show_error)
-        self.video.state_changed.connect(lambda message: self.status.setText(message))
+        self.video.state_changed.connect(self.playback_state)
         video_layout.addWidget(self.video, 1)
         controls = QHBoxLayout()
         for name, function in [("Pausa / seguir", self.video.toggle_pause),
@@ -206,7 +255,10 @@ class Window(QMainWindow):
         self.update_media({})
         self.splitter.addWidget(right)
         self.splitter.setSizes([350, 800])
+        self.home = self.build_home()
+        layout.addWidget(self.home, 1)
         layout.addWidget(self.splitter, 1)
+        self.home.hide()
         self.status = QLabel()
         self.status.setWordWrap(True)
         layout.addWidget(self.status)
@@ -224,10 +276,207 @@ class Window(QMainWindow):
         self.diagnostic_timer.timeout.connect(self.save_diagnostic)
         self.diagnostic_timer.start(1000)
         self.section("live")
+        self.show_home()
+        if self.library_error:
+            self.account_note.setText(self.library_error)
+        self.hide_list_key = QShortcut(QKeySequence("F4"), self)
+        self.hide_list_key.activated.connect(self.toggle_list)
+        self.search_key = QShortcut(QKeySequence("Ctrl+K"), self)
+        self.search_key.activated.connect(self.focus_search)
         if restore and not self.demo:
             QTimer.singleShot(0, self.restore_account)
 
+    def build_home(self):
+        home = QWidget()
+        layout = QVBoxLayout(home)
+        layout.setContentsMargins(8, 12, 8, 8)
+        title = QLabel("Tu televisión. Tu cine.")
+        title.setObjectName("homeTitle")
+        title.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        layout.addWidget(title)
+        self.home_note = QLabel("Conecta tu servicio para cargar tu biblioteca.")
+        self.home_note.setWordWrap(True)
+        self.home_note.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        layout.addWidget(self.home_note)
+        grid = QGridLayout()
+        grid.setSpacing(12)
+        self.home_tiles = {}
+        for column, (kind, name, object_name) in enumerate((('live', 'TV EN VIVO', 'homeLive'),
+                ('vod', 'PELÍCULAS', 'homeMovies'), ('series', 'SERIES', 'homeSeries'))):
+            button = HomeTile(name, {"live": "#0078d7", "vod": "#d83b01", "series": "#107c41"}[kind])
+            button.setObjectName(object_name)
+            button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            button.clicked.connect(lambda checked=False, kind=kind: self.section(kind))
+            grid.addWidget(button, 0, column)
+            self.home_tiles[kind] = button
+        self.home_favorites = QPushButton("★ FAVORITOS")
+        self.home_favorites.setObjectName("homeFavorites")
+        self.home_favorites.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.home_favorites.clicked.connect(lambda: self.show_collection('favorites'))
+        grid.addWidget(self.home_favorites, 1, 0)
+        self.home_recent = QPushButton("ÚLTIMO REPRODUCIDO")
+        self.home_recent.setObjectName("homeRecent")
+        self.home_recent.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.home_recent.clicked.connect(lambda: self.show_collection('recent'))
+        grid.addWidget(self.home_recent, 1, 1, 1, 2)
+        for column in range(3):
+            grid.setColumnStretch(column, (4, 3, 2)[column])
+        for row in range(2):
+            grid.setRowStretch(row, 1)
+        layout.addLayout(grid, 1)
+        return home
+
+    def show_home(self):
+        if self.video.renderer and self.video.pending_url and self.playing_kind in self.home_tiles:
+            from PySide6.QtGui import QPixmap
+            tile = self.home_tiles[self.playing_kind]
+            tile.preview = QPixmap.fromImage(self.video.grabFramebuffer())
+            tile.preview_title = self.now.text()
+        self.splitter.hide()
+        self.home.show()
+        self.update_home()
+
+    def show_player(self):
+        if hasattr(self, 'home'):
+            self.home.hide()
+        self.splitter.show()
+
+    def toggle_list(self):
+        self.left_panel.setVisible(self.left_panel.isHidden())
+        self.list_button.setChecked(not self.left_panel.isHidden())
+
+    def focus_search(self):
+        self.show_player()
+        self.left_panel.show()
+        self.list_button.setChecked(True)
+        self.search.setFocus()
+        self.search.selectAll()
+
+    def library_rows(self, view):
+        if not self.library or not self.library_scope:
+            return []
+        try:
+            return self.library.rows(self.library_scope, view)
+        except LibraryError as exc:
+            self.show_error(str(exc))
+            return []
+
+    def clear_home_previews(self):
+        for tile in self.home_tiles.values():
+            tile.preview = None
+            tile.preview_title = ""
+            tile.update()
+
+    def update_home(self):
+        if not hasattr(self, 'home_tiles'):
+            return
+        labels = {'live': 'TV EN VIVO', 'vod': 'PELÍCULAS', 'series': 'SERIES'}
+        for kind, button in self.home_tiles.items():
+            section = self.cache.sections.get(kind) if self.cache else None
+            count = len(section.rows) if section else None
+            if self.demo:
+                count = 2 if kind == 'live' else 1
+            button.setText(f"{labels[kind]}\n\n{count:,} disponibles" if count is not None
+                           else f"{labels[kind]}\n\nSin cargar")
+        favorites = self.library_rows('favorites')
+        recent = self.library_rows('recent')
+        self.home_favorites.setText(f"★ FAVORITOS\n\n{len(favorites)} guardados")
+        name = str(recent[0]['name']) if recent else 'Aún no hay historial'
+        self.home_recent.setText("ÚLTIMO REPRODUCIDO\n\n" + (name[:48] + '…' if len(name) > 48 else name) + "\nVer recientes →")
+        self.home_note.setText("Demostración · contenido ficticio" if self.demo else
+            "Tu servicio conectado · favoritos e historial guardados en este equipo" if self.client else
+            "Conecta tu servicio para cargar tu biblioteca.")
+
+    def row_source(self, row):
+        kind = row.get('_kind') or ('episode' if self.in_episodes else self.kind)
+        parent = row.get('_parent', self.current_series_id if kind == 'episode' else '')
+        name = row.get('_series_name', self.current_series_name if kind == 'episode' else '')
+        return kind, parent or '', name or ''
+
+    def favorite_for(self, row):
+        if not self.library or not self.library_scope:
+            return False
+        kind, parent, _ = self.row_source(row)
+        try:
+            return self.library.is_favorite(self.library_scope, kind, row, parent)
+        except LibraryError:
+            return False
+
+    def sync_favorite(self, *_args):
+        item = self.items.currentItem()
+        self.favorite_button.setEnabled(bool(item and self.library and self.library_scope and not self.foreground_jobs))
+        favorite = self.favorite_for(item.data(Qt.ItemDataRole.UserRole)) if item else False
+        self.favorite_button.setText("★ Quitar de favoritos" if favorite else "☆ Añadir a favoritos")
+
+    def toggle_favorite(self):
+        item = self.items.currentItem()
+        if not item or not self.library or not self.library_scope:
+            return
+        row = item.data(Qt.ItemDataRole.UserRole)
+        kind, parent, series_name = self.row_source(row)
+        identity = self.content_id(row)
+        try:
+            self.library.toggle(self.library_scope, kind, row, parent, series_name)
+            if self.collection_view:
+                self.rows = self.library_rows(self.collection_view)
+            self.filter_rows()
+            for index in range(self.items.count()):
+                if self.content_id(self.items.item(index).data(Qt.ItemDataRole.UserRole)) == identity:
+                    self.items.setCurrentRow(index)
+                    break
+            self.update_home()
+        except LibraryError as exc:
+            self.show_error(str(exc))
+
+    def show_collection(self, view):
+        self.show_player()
+        self.collection_view = view
+        self.search.setPlaceholderText("Buscar favoritos…" if view == "favorites" else "Buscar recientes…")
+        self.in_episodes = False
+        self.back.hide()
+        for button in self.tabs.values():
+            button.setChecked(False)
+        self.favorites_button.setChecked(view == 'favorites')
+        self.recent_button.setChecked(view == 'recent')
+        self.list_heading.setText('★  FAVORITOS' if view == 'favorites' else '↺  RECIENTES')
+        self.category.hidePopup()
+        self.search.clear()
+        self.sync_busy()
+        self.set_rows(self.library_rows(view))
+        if not self.rows:
+            self.status.setText('Selecciona contenido y pulsa ☆ Añadir a favoritos.' if view == 'favorites'
+                                else 'Aquí aparecerá el contenido cuando comience a reproducirse.')
+
+    def open_library_row(self, row):
+        if not self.client and not self.demo:
+            self.show_error('Conecta tu servicio para abrir este contenido.')
+            return
+        kind = row['_kind']
+        # Keep favorites/recent visible while changing channel or movie.
+        if kind != 'series':
+            self.play_content(row, kind, row.get('_parent', ''), row.get('_series_name', ''))
+        else:
+            self.section('series')
+            item = QListWidgetItem(row['name'])
+            item.setData(Qt.ItemDataRole.UserRole, row)
+            self.activate(item)
+
+    def playback_state(self, message):
+        self.status.setText(message)
+        if message == 'Reproduciendo' and self.pending_history:
+            kind, row, parent, series_name = self.pending_history
+            self.pending_history = None
+            if self.library and self.library_scope:
+                try:
+                    self.library.played(self.library_scope, kind, row, parent, series_name)
+                    self.update_home()
+                    if self.collection_view == 'recent':
+                        self.set_rows(self.library_rows('recent'))
+                except LibraryError as exc:
+                    self.show_error(str(exc))
+
     def stop_playback(self):
+        self.pending_history = None
         self.video.stop()
         self.playing_kind = None
         self.live_button.hide()
@@ -260,12 +509,13 @@ class Window(QMainWindow):
     def sync_busy(self):
         # Preloading must not lock browsing or playback of loaded sections.
         foreground = bool(self.foreground_jobs)
-        for widget in (self.navigation, self.items, self.back):
+        for widget in (self.navigation, self.items, self.back, self.favorites_button, self.recent_button, self.home):
             widget.setEnabled(not foreground)
-        self.category.setEnabled(not foreground and not self.in_episodes)
+        self.category.setEnabled(not foreground and not self.in_episodes and not self.collection_view)
         self.connect_button.setEnabled(not self.jobs)
         self.forget_button.setEnabled(not self.jobs)
         self.refresh_button.setEnabled(self.client is not None and not self.jobs)
+        self.sync_favorite()
 
     def submit(self, function, callback, background=False, on_error=None):
         job = Job(function)
@@ -347,21 +597,27 @@ class Window(QMainWindow):
                 client.close()
                 raise
         def connected(result):
+            was_home = not self.home.isHidden()
             new_client, note, remembered = result
             self.stop_playback()
             if self.client:
                 self.client.close()
             self.client = new_client
             self.cache = CatalogCache(new_client)
+            self.library_scope = account_scope(account)
             self.saved_account = account if remembered else None
             self.account_note.setText(note)
             self.forget_button.setVisible(remembered or note.startswith("No se pudo borrar"))
             self.failed_sections.clear()
             self.category_choices.clear()
             self.chosen.clear()
+            self.clear_home_previews()
             self.demo = False
             self.connect_button.setText("Cambiar servicio")
             self.section(self.kind)
+            self.update_home()
+            if was_home:
+                self.show_home()
         self.submit(connect, connected)
 
     def forget_account(self):
@@ -372,14 +628,17 @@ class Window(QMainWindow):
             self.client = None
             self.cache = None
             self.saved_account = None
+            self.library_scope = None
             self.failed_sections.clear()
             self.category_choices.clear()
             self.chosen.clear()
+            self.clear_home_previews()
             self.forget_button.hide()
             self.account_note.setText("Cuenta olvidada.")
             self.connect_button.setText("Conectar mi servicio")
             self.preload_status.clear()
             self.section("live")
+            self.update_home()
             self.sync_busy()
         self.submit(self.account_store.forget, forgotten)
 
@@ -404,8 +663,9 @@ class Window(QMainWindow):
         self.preload_status.setText(f"Precargando {labels[kind]}…")
         def loaded(section):
             self.pending_section = None
-            if self.kind == kind and not self.in_episodes:
+            if self.kind == kind and not self.in_episodes and not self.collection_view:
                 self.display_section(section)
+            self.update_home()
             self.preload_next()
         def failed(message):
             self.pending_section = None
@@ -429,7 +689,13 @@ class Window(QMainWindow):
         self.set_rows(section.filtered(self.category.currentData()))
 
     def section(self, kind):
+        self.collection_view = None
+        self.favorites_button.setChecked(False)
+        self.recent_button.setChecked(False)
+        self.list_heading.setText({'live': '■  TV EN VIVO', 'vod': '■  PELÍCULAS', 'series': '■  SERIES'}[kind])
+        self.show_player()
         self.kind = kind
+        self.search.setPlaceholderText({"live": "Buscar canal…", "vod": "Buscar película…", "series": "Buscar serie…"}[kind])
         self.in_episodes = False
         self.sync_busy()
         self.back.hide()
@@ -460,7 +726,7 @@ class Window(QMainWindow):
             self.status.setText("Conecta tu servicio para cargar TV en vivo, películas y series. Doble clic para reproducir.")
 
     def load_catalog(self):
-        if not self.client or self.in_episodes:
+        if not self.client or self.in_episodes or self.collection_view:
             return
         category = self.category.currentData()
         self.category_choices[self.kind] = category
@@ -473,9 +739,15 @@ class Window(QMainWindow):
         self.status.setText(f"{len(rows)} elementos · doble clic o Enter para abrir")
 
     def content_context(self):
+        if self.collection_view:
+            return self.collection_view
         return ("episodes", self.current_series_id) if self.in_episodes else self.kind
 
     def content_id(self, row):
+        if self.collection_view:
+            kind = row.get('_kind', self.kind)
+            identity = row.get('series_id') if kind == 'series' else row.get('stream_id')
+            return (kind, str(identity), str(row.get('_parent', '')))
         key = "series_id" if self.kind == "series" and not self.in_episodes else "stream_id"
         return str(row.get(key))
 
@@ -486,27 +758,52 @@ class Window(QMainWindow):
             selected = self.content_id(item.data(Qt.ItemDataRole.UserRole)) == self.content_id(row)
             item.setData(CHOSEN_ROLE, selected)
             item.setToolTip("Contenido elegido" if selected else item.text())
+            if selected:
+                self.items.setCurrentItem(item)
 
     def filter_rows(self):
         query = self.search.text().casefold().strip()
+        self.items.blockSignals(True)
         self.items.clear()
+        chosen_item = None
+        favorites = {(entry['_kind'], str(entry.get('series_id') if entry['_kind'] == 'series' else entry.get('stream_id')), entry['_parent'])
+                     for entry in self.library_rows('favorites')}
         for row in self.rows:
             name = str(row.get("name", "Sin nombre"))
             if query in name.casefold():
-                item = QListWidgetItem(name)
+                source, parent, series_name = self.row_source(row)
+                favorite = (source, str(row.get("series_id") if source == "series" else row.get("stream_id")), str(parent)) in favorites
+                label = ('★ ' if favorite else '') + name
+                if self.collection_view:
+                    prefix = {'live':'TV', 'vod':'PELÍCULA', 'series':'SERIE', 'episode':'EPISODIO'}[source]
+                    if source == 'episode' and series_name:
+                        label = f'{series_name} · {label}'
+                    label = f'{prefix} · {label}'
+                item = QListWidgetItem(label)
                 item.setData(Qt.ItemDataRole.UserRole, row)
                 selected = self.chosen.get(self.content_context()) == self.content_id(row)
                 item.setData(CHOSEN_ROLE, selected)
                 item.setToolTip("Contenido elegido" if selected else name)
                 self.items.addItem(item)
+                if selected:
+                    chosen_item = item
+        if chosen_item:
+            self.items.setCurrentItem(chosen_item)
+        self.items.blockSignals(False)
+        self.sync_favorite()
 
     def activate(self, item):
         row = item.data(Qt.ItemDataRole.UserRole)
+        if self.collection_view:
+            self.open_library_row(row)
+            return
         if self.kind == "series" and not self.in_episodes:
             def loaded(episodes):
                 self.choose_content(row)
                 self.current_series_id = str(row.get("series_id"))
+                self.current_series_name = str(row.get("name", ""))
                 self.in_episodes = True
+                self.search.setPlaceholderText("Buscar episodio…")
                 self.sync_busy()
                 self.back.show()
                 self.search.clear()
@@ -521,6 +818,11 @@ class Window(QMainWindow):
                     cache = self.cache
                     self.submit(lambda: cache.episodes(series_id), loaded)
             return
+        source, parent, series_name = self.row_source(row)
+        self.play_content(row, source, parent, series_name)
+
+    def play_content(self, row, source, parent='', series_name=''):
+        play_kind = 'series' if source == 'episode' else source
         if self.demo:
             index = int(row.get("stream_id", 1)) - 1
             if not self.demo_files:
@@ -529,14 +831,15 @@ class Window(QMainWindow):
             url = str(Path(self.demo_files[index % len(self.demo_files)]).resolve())
         else:
             try:
-                url = self.client.stream_url(self.kind, row.get("stream_id"), row.get("container_extension"))
+                url = self.client.stream_url(play_kind, row.get("stream_id"), row.get("container_extension"))
             except ServiceError as exc:
                 self.show_error(str(exc))
                 return
         self.choose_content(row)
         self.now.setText(str(row.get("name", "Reproduciendo")))
-        self.playing_kind = self.kind
+        self.playing_kind = play_kind
         self.live_button.setVisible(self.playing_kind == "live")
+        self.pending_history = (source, dict(row), parent, series_name)
         self.video.play(url)
 
     def fullscreen(self):
@@ -556,27 +859,44 @@ class Window(QMainWindow):
         self.video.dispose()
         if self.client:
             self.client.close()
+        if self.library:
+            self.library.close()
         event.accept()
 
 
 STYLE = """
-QWidget { background: #191b20; color: #e5eaf3; font-size: 14px; }
-QLabel#brand { color: #72dac7; font-size: 18px; font-weight: bold; }
-QPushButton { background: #223149; border: 1px solid #34465e; border-radius: 8px; padding: 8px 14px; }
-QPushButton:hover { background: #304663; }
-QPushButton:checked { background: #17685e; border-color: #72dac7; }
-QPushButton:disabled { color: #7b879b; }
-QLineEdit, QComboBox { background: #23262d; border: 1px solid #34465e; border-radius: 7px; padding: 8px; }
-QListWidget { background: #23262d; border: 1px solid #34465e; border-radius: 8px; }
-QListWidget::item { padding: 8px 10px; }
-QListWidget::item:selected { background: #304663; }
-QLabel#streamInfo { color: #bac3d1; font-size: 13px; }
+QWidget { background: #080a0f; color: #e2e7f0; font-size: 14px; }
+QLabel#brand { color: #00e5ff; font-size: 18px; font-weight: bold; }
+QWidget#sidebar { background: #11141d; border: 1px solid #222838; }
+QLabel#listHeading { color: #e2e7f0; font-weight: bold; padding: 4px; }
+QPushButton { background: #161b26; border: 1px solid #2d3748; border-radius: 0px; padding: 7px 10px; min-height: 16px; }
+QPushButton:hover { background: #1f2433; border-color: #00e5ff; }
+QPushButton:checked { background: #0078d7; border-color: #00e5ff; color: white; }
+QPushButton:disabled { color: #738197; }
+QLineEdit, QComboBox { background: #0c0e14; border: 1px solid #2d3748; border-radius: 0px; padding: 7px; }
+QLineEdit:focus, QComboBox:focus { border-color: #00e5ff; }
+QListWidget { background: #080a0f; border: none; }
+QListWidget::item { padding: 8px 10px; border-bottom: 1px solid #222838; }
+QListWidget::item:selected { background: #1f344b; }
+QLabel#streamInfo { color: #00e5ff; font-size: 12px; font-family: 'JetBrains Mono'; }
+QPushButton#homeLive { background: #0078d7; font-size: 22px; text-align: left; padding: 24px; border: none; }
+QPushButton#homeMovies { background: #d83b01; font-size: 22px; text-align: left; padding: 24px; border: none; }
+QPushButton#homeSeries { background: #107c41; font-size: 22px; text-align: left; padding: 24px; border: none; }
+QPushButton#homeFavorites { background: #007f76; font-size: 20px; text-align: left; padding: 20px; border: none; }
+QPushButton#homeRecent { background: #161b26; font-size: 20px; text-align: left; padding: 20px; border: 1px solid #2d3748; }
+QLabel#homeTitle { font-size: 28px; font-weight: 300; }
+QScrollBar:vertical { background: #11141d; width: 8px; margin: 0px; }
+QScrollBar::handle:vertical { background: #0078d7; min-height: 24px; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
 """
 
 
 def configure_appearance(app):
+    font_path = Path(__file__).parent / 'assets/fonts/InterVariable.ttf'
+    if font_path.exists():
+        QFontDatabase.addApplicationFont(str(font_path))
     available = set(QFontDatabase.families())
-    family = next((name for name in ("SF Pro Text", "SF Pro Display", "Inter", "Adwaita Sans", "Helvetica Neue", "Noto Sans")
+    family = next((name for name in ("Inter Variable", "Inter", "SF Pro Text", "SF Pro Display", "Adwaita Sans", "Helvetica Neue", "Noto Sans")
                    if name in available), app.font().family())
     font = QFont(family)
     font.setPointSizeF(10.5)

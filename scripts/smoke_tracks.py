@@ -10,6 +10,7 @@ app = QApplication(sys.argv[:1])
 configure_appearance(app)
 window = Window(demo=True, demo_files=[root / 'runtime/tracks-demo.mkv'], restore=False)
 window.show()
+window.show_player()
 failures = []
 window.video.failed.connect(failures.append)
 steps = {'count': 0}

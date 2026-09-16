@@ -4,14 +4,14 @@ import sys
 from pathlib import Path
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
-from tecnomata_iptv.app import Window, STYLE
+from tecnomata_iptv.app import Window, configure_appearance
 
 root = Path(__file__).resolve().parents[1]
 app = QApplication(sys.argv[:1])
-app.setStyle("Fusion")
-app.setStyleSheet(STYLE)
+configure_appearance(app)
 window = Window(True, [root / "runtime/demo-a.mp4", root / "runtime/demo-b.mp4"])
 window.show()
+window.show_player()
 state = {"changes": 0, "engine": None, "widget": id(window.video), "frames_start": 0}
 failed = []
 window.video.failed.connect(failed.append)

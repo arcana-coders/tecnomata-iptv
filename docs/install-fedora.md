@@ -76,3 +76,12 @@ git pull --ff-only gitea main
 ```
 
 No se ha validado instalación/ejecución en Windows ni en otra distribución Linux.
+
+## Datos y diseño nuevos
+
+Inter incluida en paquete, no instalación de fuentes global. ZIP de diseño original
+y docs/design.md versionados. Favoritos/recientes son locales en XDG_DATA_HOME/
+tecnomata-iptv/library.sqlite3 (default ~/.local/share/tecnomata-iptv/), no Git.
+Para migrar biblioteca copiar ese archivo con app cerrada y conservar modo600;
+reconectar la misma cuenta recupera scope. Secret Service se prepara aparte,
+SQLite no contiene contraseña/servidor/usuario ni URLs. Progreso VOD no implementado.

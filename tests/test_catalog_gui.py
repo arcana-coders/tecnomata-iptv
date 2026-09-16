@@ -5,6 +5,7 @@ import pytest
 from PySide6.QtWidgets import QApplication
 from PySide6.QtTest import QTest
 from tecnomata_iptv import app as ui
+from tecnomata_iptv.library import LibraryStore
 from tecnomata_iptv.accounts import AccountStore
 from tecnomata_iptv.xtream import Account, XtreamClient
 
@@ -50,6 +51,7 @@ def environment(qapp, monkeypatch):
             return httpx.Response(200, json={"episodes": {"1": [{"id": "9", "title": "Piloto", "episode_num": 1}]}})
         return httpx.Response(200, json=[{"name": "Prueba", "category_id": "1", "stream_id": 2, "series_id": 3}])
     monkeypatch.setattr(ui, "XtreamClient", lambda account: XtreamClient(account, httpx.MockTransport(handler)))
+    monkeypatch.setattr(ui, "LibraryStore", lambda path=None: LibraryStore(":memory:"))
     store = AccountStore(MemoryBackend())
     windows = []
     yield calls, store, windows
@@ -118,3 +120,27 @@ def test_session_only_login_removes_previous_saved_account(environment):
     wait_until(lambda: window.client is not None and not window.jobs)
     assert store.load() is None
     assert window.saved_account is None
+
+
+def test_library_follows_authenticated_account_and_forget_hides_it(environment):
+    calls, store, windows = environment
+    window = ui.Window(restore=False, account_store=store)
+    windows.append(window)
+    first = Account('https://example.invalid', 'first', 'p')
+    window.connect_account(first)
+    wait_until(lambda: window.client is not None and not window.jobs)
+    first_scope = window.library_scope
+    window.section('live')
+    window.items.setCurrentRow(0)
+    window.toggle_favorite()
+    assert len(window.library_rows('favorites')) == 1
+    window.connect_account(Account(first.server, 'second', 'p'))
+    wait_until(lambda: not window.jobs)
+    assert window.library_rows('favorites') == []
+    window.connect_account(first)
+    wait_until(lambda: not window.jobs)
+    assert len(window.library_rows('favorites')) == 1
+    window.forget_account()
+    wait_until(lambda: not window.jobs)
+    assert window.library_scope is None and window.library_rows('favorites') == []
+    assert len(window.library.rows(first_scope, 'favorites')) == 1

@@ -21,7 +21,7 @@ class CategoryComboBox(QComboBox):
         if self.popup is None:
             self.popup = QFrame(self.window())
             self.popup.setObjectName("categoryPopup")
-            self.popup.setStyleSheet("QFrame#categoryPopup { background: #182438; border: 1px solid #72dac7; border-radius: 7px; } QPushButton { padding: 6px 10px; }")
+            self.popup.setStyleSheet("QFrame#categoryPopup { background: #11141d; border: 1px solid #00e5ff; border-radius: 0px; } QPushButton { padding: 6px 10px; }")
             layout = QVBoxLayout(self.popup)
             header = QHBoxLayout()
             header.addWidget(QLabel("Categorías"))
@@ -83,8 +83,8 @@ class ChosenContentDelegate(QStyledItemDelegate):
         if not index.data(CHOSEN_ROLE):
             return super().paint(painter, option, index)
         painter.save()
-        painter.fillRect(option.rect, QColor("#17685e"))
-        painter.fillRect(option.rect.adjusted(0, 0, -option.rect.width() + 4, 0), QColor("#72dac7"))
+        painter.fillRect(option.rect, QColor("#0078d7"))
+        painter.fillRect(option.rect.adjusted(0, 0, -option.rect.width() + 4, 0), QColor("#00e5ff"))
         styled = QStyleOptionViewItem(option)
         self.initStyleOption(styled, index)
         styled.state &= ~QStyle.StateFlag.State_Selected
@@ -95,3 +95,49 @@ class ChosenContentDelegate(QStyledItemDelegate):
         text = styled.fontMetrics.elidedText("● " + styled.text, Qt.TextElideMode.ElideRight, rect.width())
         painter.drawText(rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, text)
         painter.restore()
+
+
+class HomeTile(QPushButton):
+    """Metro tile; an optional decoded-frame preview stays entirely in memory."""
+    def __init__(self, text, color):
+        super().__init__(text)
+        self.color = QColor(color)
+        self.preview = None
+        self.preview_title = ''
+
+    def sizeHint(self):
+        from PySide6.QtCore import QSize
+        return QSize(200, 180)
+
+    def minimumSizeHint(self):
+        from PySide6.QtCore import QSize
+        return QSize(160, 140)
+
+    def paintEvent(self, event):
+        from PySide6.QtGui import QPainter, QFont
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), self.color)
+        if self.preview and not self.preview.isNull():
+            scaled = self.preview.scaled(self.size(), Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                                         Qt.TransformationMode.SmoothTransformation)
+            painter.drawPixmap((self.width()-scaled.width())//2, (self.height()-scaled.height())//2, scaled)
+            painter.fillRect(self.rect(), QColor(0, 0, 0, 130))
+        font = QFont(self.font())
+        font.setPixelSize(20)
+        font.setBold(True)
+        painter.setFont(font)
+        painter.setPen(QColor('white'))
+        lines = [line for line in self.text().splitlines() if line]
+        rect = self.rect().adjusted(20, self.height()-110, -16, -70)
+        painter.drawText(rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                         painter.fontMetrics().elidedText(lines[0], Qt.TextElideMode.ElideRight, rect.width()))
+        font.setPixelSize(14)
+        font.setBold(False)
+        painter.setFont(font)
+        rect = self.rect().adjusted(20, self.height()-70, -16, -20)
+        details = lines[-1] + ('\n' + self.preview_title if self.preview_title else '')
+        painter.drawText(rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                         '\n'.join(painter.fontMetrics().elidedText(line, Qt.TextElideMode.ElideRight, rect.width()) for line in details.splitlines()))
+        if self.hasFocus() or self.underMouse():
+            painter.setPen(QColor('#00e5ff'))
+            painter.drawRect(self.rect().adjusted(1, 1, -2, -2))

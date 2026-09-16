@@ -131,3 +131,38 @@ LD_LIBRARY_PATH="$PWD/runtime/libmpv/usr/lib64" .venv/bin/python scripts/smoke_l
 
 [MPV stop](https://mpv.io/manual/stable/#command-interface) confirma cierre y
 limpieza de playlist con motor disponible para cliente API.
+
+## Biblioteca y rediseño Metro — 2026-09-16
+
+Diseño/pantallas/fuente ZIP en [design.md](design.md). Inicio y reproductor alternan
+widgets Qt en la misma ventana/motor; búsqueda/filtros/tablas se mueven a la única
+columna izquierda. Colecciones reutilizan QListWidget; row_source/metadata mínima
+permiten abrir mezcla de TV/VOD/series/episodios sin confundir IDs o rutas. Serie
+favorita abre episodios; episodio favorito/reciente conserva parent y extension.
+No se restauran posiciones todavía. Favorito se añade desde la fila seleccionada.
+
+library.py: SQLite fuera del repo, permissions600/dir700 al crear; tabla entries
+con PK(scope,kind,id,parent), nombre/category/ext/series_name/favorite/played.
+Scope SHA256 servidor normalizado + NUL + usuario, no incluye contraseña; cambiar
+password conserva biblioteca. Nunca guarda cuenta/server/URL/rawresponse/logo.
+UPsert sólo campos permitidos y parámetros SQL; favorite toggle y played se
+confirman en transacción. Historial ordenado por played, límite100/deduplicado,
+pruna anteriores no favoritos y preserva favoritos antiguos. SQLite errores
+visibles/sanitizados; si falla apertura, video sigue y biblioteca se deshabilita.
+Olvidar/cambiar sólo ocultan/aislan colecciones, no eliminan DB. No lectura de
+historial real en pruebas: dependency injection Memory/temporal. Backup por usuario
+fuera de Git; cuenta sigue Secret Service, no hay plaintext fallback.
+
+pending_history pertenece a la fuente activada, no pestaña navegada, y se registra
+una vez al estado playing. Polling espera media_ready tras file-loaded, evitando
+marcar nueva fuente con time_pos del archivo anterior. Stop/cambio de cuenta
+limpia pendiente. Reconnect live no crea duplicados. Foreground workers bloquean
+acciones de biblioteca/Inicio hasta terminar; prefetch no reemplaza una colección.
+Filtro resuelve favoritos en una consulta por vista, sin N queries para canales.
+
+45 pruebas y smoke_library real con fixture: persistencia/reopen, namespace,
+aislamiento por cuenta y cambio/olvido, orden/dedup/límite, series/episodios,
+secrets no guardados y modo600. Smokes tracks/live siguen PASS; smoke_gui ocho
+cambios, 131 frames, mismo motor/widget/ventana. Capturas ficticias inspeccionadas.
+Inter oficial incluida en wheel con OFL; pip wheel usa build isolation (venv no
+incluye setuptools, no usar --no-build-isolation en este entorno).
