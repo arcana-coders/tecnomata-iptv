@@ -22,4 +22,4 @@ where = ["src"]
 testpaths = ["tests"]
 
 [tool.setuptools.package-data]
-tecnomata_iptv = ["assets/fonts/*.ttf", "assets/fonts/*.txt", "assets/fonts/*.md"]
+tecnomata_iptv = ["assets/fonts/*.ttf", "assets/fonts/*.txt", "assets/fonts/*.md", "assets/backgrounds/*.png", "assets/backgrounds/*.jpg", "assets/backgrounds/*.jpeg", "assets/backgrounds/*.webp", "assets/backgrounds/*.md", "assets/backgrounds/*.json"]

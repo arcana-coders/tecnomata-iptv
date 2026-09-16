@@ -1,11 +1,35 @@
-# Diseño autorizado — Metro Cinema
+# Diseño autorizado — Springfield / Metro Cinema
 
 Arturo dejó [ZIP original](../stitch_tecnomata_iptv_desktop_player.zip) como fuente
 del diseño. Contiene inicio, reproductor (screen.png + code.html) y DESIGN.md.
 ZIP versionado sin modificar; extraer bajo runtime/design-reference para revisar,
 no ejecutar HTML/JS externo ni convertir el reproductor en un navegador.
 
-## Adaptación Qt
+## Diseño vigente: Springfield — 2026-09-16
+
+Arturo mantiene la estructura del ZIP y pide un look referido a Los Simpson,
+imágenes de ejemplo desde arranque y una pestaña para recuperar lista oculta.
+Esta instrucción más reciente cambia los acentos/geometría Metro anteriores:
+base azul noche, amarillo Springfield, detalles rosa dona y navegación redondeada.
+Header usa dona dibujada en Qt; Inicio/Ver como control segmentado, icono de lista
+sólo en reproductor. F4/icono oculta columna y deja pestaña lateral › Lista,
+sin cubrir video; clic/F4/Ctrl+K la recupera y conserva fuente/motor/selección.
+
+TV/cine/series incluyen ejemplos ilustrados locales siempre, sin depender del
+proveedor, Internet ni playback. Cuadro actual en RAM tiene prioridad al volver
+a Inicio. Favoritos/Último se ocultan si vacíos; si sólo existe una tarjeta ocupa
+el ancho de la fila. Al existir contenido, usan ejemplo del tipo y cuadro sólo
+si corresponde a ese nombre, evitando atribuir imagen de otro canal. Fondos son
+decorativos; no afirman emitir Los Simpson ni ser portadas reales del catálogo.
+
+Assets y prompts/procedencia: assets/backgrounds/README.md. Antigravity primer
+intento rechazado por personajes genéricos; image_gen rechazó generación de
+personajes. Se generaron fondos originales de sofá/dona/autocine/barrio mediante
+image_gen, sin personajes, usando la paleta referencial. Revisados/integrados; ZIP
+preservados. Capturas de pruebas sólo con videos ficticios. 48 pruebas cubren
+condiciones y navegación, más smoke_library real de pestaña/video/biblioteca.
+
+## Histórico: adaptación Qt inicial
 
 - Fondos #080a0f/#11141d, estados azul #0078d7 y acento cian #00e5ff.
 - Geometría plana, esquinas rectas, bordes discretos y lista compacta.

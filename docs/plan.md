@@ -78,3 +78,9 @@ No promete eliminar el retraso del proveedor; Arturo valida con canal deportivo.
 Inicio/reproductor adaptados al ZIP Metro de Arturo: ver design.md. Favoritos
 y últimos100 exitosos guardados localmente por cuenta; 45 pruebas, smoke real de
 biblioteca y captura ficticia. Progreso/portadas/EPG pendientes; no telemetry falsa.
+
+## Ajuste visual Springfield — 2026-09-16
+
+Inicio conserva tres ejemplos locales incluso sin reproducción. Favoritos y últimos
+se muestran sólo cuando existen datos. Navegación en cápsula y pestaña lateral
+restauran la lista sin cambiar el motor. Ver [diseño](design.md).

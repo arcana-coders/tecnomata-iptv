@@ -85,3 +85,6 @@ tecnomata-iptv/library.sqlite3 (default ~/.local/share/tecnomata-iptv/), no Git.
 Para migrar biblioteca copiar ese archivo con app cerrada y conservar modo600;
 reconectar la misma cuenta recupera scope. Secret Service se prepara aparte,
 SQLite no contiene contraseña/servidor/usuario ni URLs. Progreso VOD no implementado.
+
+Los tres fondos originales de Inicio vienen empaquetados con la app; no requieren
+descargas ni reproducción. Ver [diseño](design.md).

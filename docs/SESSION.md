@@ -7,7 +7,23 @@ y serie reproducidos correctamente con su proveedor en la versión corregida.
 Fase 4 iniciada con precarga/caché de tres secciones y cuenta recordada en Linux.
 Prototipo funcional, todavía sin fichas, portadas, EPG ni progreso; favoritos y recientes ya implementados.
 
-## Último cambio: favoritos, recientes y diseño del ZIP
+## Último cambio: Springfield, ejemplos y pestaña de lista oculta
+
+Arturo quiere ejemplos de fondo al arrancar, tarjetas colecciones sólo con datos,
+flecha para lista escondida y navegación más bonita, con referencias a Los Simpson.
+TV/cine/series: fondos ilustrados locales, preview real en RAM tiene prioridad;
+favoritos/último se ocultan vacíos y sólo muestran preview si título corresponde.
+Única tarjeta de colección llena fila. Inicio/Ver control segmentado amarillo,
+dona nativa Qt, base noche y esquinas suaves. Icono lista sólo en reproductor;
+rail › Lista aparece al esconder columna; clic/F4/Ctrl+K restaura mismos tamaños,
+selección y motor. Ver design.md y assets/backgrounds/README.md para provenance.
+
+48 pruebas cubren colecciones condicionales y recuperación de lista/navegación;
+smoke_library real comprueba fondos cargados y rail visible/restauración sin
+cambiar motor. Assets generados con image_gen tras rechazar intento genérico de
+Antigravity. Falta validación visual de Arturo con su proveedor.
+
+## Histórico: favoritos, recientes y diseño del ZIP
 
 Arturo pide favoritos/último reproducido y adaptar al ZIP en la raíz. Ver design.md:
 Inicio con mosaicos/datos reales y reproductor Metro oscuro plano azul/cian con

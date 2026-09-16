@@ -22,7 +22,7 @@ IPTVnator. `CatalogCache` es por cuenta y sesión: precargar categorías/listas 
 live/vod/series en segundo plano, reutilizar al entrar/cambiar categoría y cachear
 episodios. Actualizar listas/cambiar/olvidar cuenta invalidan el caché.
 No bloquear navegación/reproducción por la precarga. Pruebas GUI de caché/cuenta:
-`QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q` (45 pruebas actualmente).
+`QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q` (48 pruebas actualmente).
 
 Cerrar trabajo actualizando `docs/SESSION.md`, el índice y desarrollo en
 `../asistente/projects/tecnomata-iptv/`, más `../asistente/journal.md`.
@@ -64,3 +64,11 @@ antes de media_ready. Cambiar cuenta aísla; Olvidar oculta, no borra biblioteca
 Colecciones siguen visibles al abrir TV/VOD/episodio; serie abre episodios.
 Pruebas aisladas con SQLite temporal/memory, nunca historial real. Smoke nuevo
 scripts/smoke_library.py; capturas únicamente ficticias. Progreso VOD pendiente.
+
+Diseño más reciente Springfield en docs/design.md: acentos amarillos/rosa dona,
+base azul noche, navegación Inicio/Ver segmentada. Base estructural ZIP permanece.
+Fondos siempre locales en assets/backgrounds para TV/cine/series; ejemplo separado
+del preview en RAM, éste tiene prioridad. Favoritos/Último tarjetas ocultas si
+vacíos, ocupan fila completa si sólo una. No asignar preview de otro título.
+Lista oculta deja hidden_list_rail / › Lista fuera del video. set_list_visible
+coordina header/icono/rail/tamaños; usarlo desde F4/icono/Ctrl+K, sin cambiar motor.

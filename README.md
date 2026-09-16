@@ -26,9 +26,12 @@ cd /home/tecnomata/tecnomata/tecnomata-iptv
 ./scripts/run.sh --demo-file runtime/demo-a.mp4 --demo-file runtime/demo-b.mp4
 ```
 
-Inicio muestra mosaicos de TV, películas, series, favoritos y lo último reproducido,
-según el ZIP de diseño de Arturo. Elige un mosaico o Reproductor para ver la lista
-y video; Inicio vuelve al tablero. F4 alterna la lista; Ctrl+K enfoca la búsqueda.
+Inicio usa la estructura del ZIP de Arturo con look Springfield: azul noche,
+amarillo, dona y fondos ilustrados originales con referencias visuales a Springfield. TV/cine/series tienen imágenes
+de ejemplo desde arranque; favoritos/último aparecen cuando tengan contenido. Elige un mosaico o Reproductor para ver la lista
+y video; Inicio vuelve al tablero. Inicio/Ver indican la vista activa. El icono de
+lista/F4 oculta columna y deja pestaña › Lista para recuperarla sin detener video;
+Ctrl+K también la recupera y enfoca búsqueda.
 
 Conectar mi servicio abre el formulario de servidor, usuario y contraseña.
 «Recordar mi cuenta» está activado por defecto: guarda la cuenta en GNOME Keyring

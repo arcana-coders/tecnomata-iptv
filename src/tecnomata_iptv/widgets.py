@@ -3,7 +3,7 @@ from PySide6.QtCore import Qt, QEvent, QPoint
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (QApplication, QComboBox, QFrame, QVBoxLayout,
     QHBoxLayout, QLabel, QPushButton, QListView, QSizePolicy, QStyledItemDelegate,
-    QStyleOptionViewItem, QStyle)
+    QStyleOptionViewItem, QStyle, QWidget)
 
 CHOSEN_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 
@@ -21,7 +21,7 @@ class CategoryComboBox(QComboBox):
         if self.popup is None:
             self.popup = QFrame(self.window())
             self.popup.setObjectName("categoryPopup")
-            self.popup.setStyleSheet("QFrame#categoryPopup { background: #11141d; border: 1px solid #00e5ff; border-radius: 0px; } QPushButton { padding: 6px 10px; }")
+            self.popup.setStyleSheet("QFrame#categoryPopup { background: #17263d; border: 1px solid #f5cc39; border-radius: 8px; } QPushButton { padding: 6px 10px; }")
             layout = QVBoxLayout(self.popup)
             header = QHBoxLayout()
             header.addWidget(QLabel("Categorías"))
@@ -83,14 +83,14 @@ class ChosenContentDelegate(QStyledItemDelegate):
         if not index.data(CHOSEN_ROLE):
             return super().paint(painter, option, index)
         painter.save()
-        painter.fillRect(option.rect, QColor("#0078d7"))
+        painter.fillRect(option.rect, QColor("#f5cc39"))
         painter.fillRect(option.rect.adjusted(0, 0, -option.rect.width() + 4, 0), QColor("#00e5ff"))
         styled = QStyleOptionViewItem(option)
         self.initStyleOption(styled, index)
         styled.state &= ~QStyle.StateFlag.State_Selected
         styled.font.setBold(True)
         painter.setFont(styled.font)
-        painter.setPen(QColor("#ffffff"))
+        painter.setPen(QColor("#192333"))
         rect = option.rect.adjusted(12, 0, -10, 0)
         text = styled.fontMetrics.elidedText("● " + styled.text, Qt.TextElideMode.ElideRight, rect.width())
         painter.drawText(rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, text)
@@ -103,7 +103,12 @@ class HomeTile(QPushButton):
         super().__init__(text)
         self.color = QColor(color)
         self.preview = None
+        self.example = None
         self.preview_title = ''
+
+    def set_example(self, image):
+        self.example = image
+        self.update()
 
     def sizeHint(self):
         from PySide6.QtCore import QSize
@@ -114,14 +119,23 @@ class HomeTile(QPushButton):
         return QSize(160, 140)
 
     def paintEvent(self, event):
-        from PySide6.QtGui import QPainter, QFont
+        from PySide6.QtGui import QPainter, QFont, QPainterPath, QLinearGradient
         painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        clip = QPainterPath()
+        clip.addRoundedRect(self.rect(), 14, 14)
+        painter.setClipPath(clip)
         painter.fillRect(self.rect(), self.color)
-        if self.preview and not self.preview.isNull():
-            scaled = self.preview.scaled(self.size(), Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+        image = self.preview if self.preview is not None and not self.preview.isNull() else self.example
+        if image is not None and not image.isNull():
+            scaled = image.scaled(self.size(), Qt.AspectRatioMode.KeepAspectRatioByExpanding,
                                          Qt.TransformationMode.SmoothTransformation)
             painter.drawPixmap((self.width()-scaled.width())//2, (self.height()-scaled.height())//2, scaled)
-            painter.fillRect(self.rect(), QColor(0, 0, 0, 130))
+            shade = QLinearGradient(0, 0, 0, self.height())
+            shade.setColorAt(0, QColor(10, 20, 35, 0))
+            shade.setColorAt(.45, QColor(10, 20, 35, 30))
+            shade.setColorAt(1, QColor(10, 20, 35, 240))
+            painter.fillRect(self.rect(), shade)
         font = QFont(self.font())
         font.setPixelSize(20)
         font.setBold(True)
@@ -141,3 +155,26 @@ class HomeTile(QPushButton):
         if self.hasFocus() or self.underMouse():
             painter.setPen(QColor('#00e5ff'))
             painter.drawRect(self.rect().adjusted(1, 1, -2, -2))
+
+
+class DonutBadge(QWidget):
+    """Small code-native brand mark, drawn independently of emoji fonts."""
+    def __init__(self):
+        super().__init__()
+        self.setFixedSize(30, 30)
+        self.setToolTip('Un sofá, una dona y algo bueno para ver')
+
+    def paintEvent(self, event):
+        from PySide6.QtGui import QPainter, QPen
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(QPen(QColor('#302335'), 2))
+        painter.setBrush(QColor('#d29a58'))
+        painter.drawEllipse(2, 2, 26, 26)
+        painter.setBrush(QColor('#ee87ad'))
+        painter.drawEllipse(3, 3, 24, 22)
+        painter.setBrush(QColor('#172235'))
+        painter.drawEllipse(11, 10, 8, 8)
+        for color, x, y in (('#ffda45', 7, 8), ('#7ac9e9', 20, 7), ('#ffda45', 19, 21), ('#91dbab', 6, 20)):
+            painter.setPen(QPen(QColor(color), 2))
+            painter.drawLine(x, y, x+3, y+1)

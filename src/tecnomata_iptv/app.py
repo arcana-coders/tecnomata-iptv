@@ -16,7 +16,7 @@ from .catalog import CatalogCache, KINDS
 from .accounts import AccountStore, StorageError
 from .library import LibraryStore, LibraryError, account_scope
 from .media import describe_video, track_label
-from .widgets import CategoryComboBox, ChosenContentDelegate, CHOSEN_ROLE, HomeTile
+from .widgets import CategoryComboBox, ChosenContentDelegate, CHOSEN_ROLE, HomeTile, DonutBadge
 
 
 class Signals(QObject):
@@ -119,16 +119,27 @@ class Window(QMainWindow):
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(8)
         top = QHBoxLayout()
+        top.addWidget(DonutBadge())
         title = QLabel("TECNOMATA IPTV")
         title.setObjectName("brand")
         top.addWidget(title)
-        self.home_button = QPushButton("Inicio")
+        nav_header = QWidget()
+        nav_header.setObjectName('topNav')
+        pivots = QHBoxLayout(nav_header)
+        pivots.setContentsMargins(4, 4, 4, 4)
+        pivots.setSpacing(2)
+        top.addWidget(nav_header)
+        self.home_button = QPushButton("⌂ Inicio")
+        self.home_button.setCheckable(True)
         self.home_button.clicked.connect(self.show_home)
-        top.addWidget(self.home_button)
-        self.player_button = QPushButton("Reproductor")
+        pivots.addWidget(self.home_button)
+        self.player_button = QPushButton("▶ Ver")
+        self.player_button.setCheckable(True)
         self.player_button.clicked.connect(self.show_player)
-        top.addWidget(self.player_button)
-        self.list_button = QPushButton("Lista")
+        pivots.addWidget(self.player_button)
+        self.list_button = QPushButton("☷")
+        self.list_button.setObjectName("listToggle")
+        self.list_button.setAccessibleName("Mostrar u ocultar lista")
         self.list_button.setCheckable(True)
         self.list_button.setChecked(True)
         self.list_button.setToolTip("Mostrar u ocultar la lista (F4)")
@@ -202,6 +213,21 @@ class Window(QMainWindow):
         left.addWidget(self.favorite_button)
         self.items.currentItemChanged.connect(self.sync_favorite)
         self.splitter.addWidget(self.left_panel)
+        self.sidebar_sizes = [350, 0, 800]
+        self.hidden_list_rail = QWidget()
+        self.hidden_list_rail.setFixedWidth(36)
+        rail = QVBoxLayout(self.hidden_list_rail)
+        rail.setContentsMargins(0, 0, 0, 0)
+        rail.addStretch()
+        self.reveal_button = QPushButton("›\nLista")
+        self.reveal_button.setObjectName("sidebarReveal")
+        self.reveal_button.setAccessibleName("Mostrar lista oculta")
+        self.reveal_button.setToolTip("Lista oculta · pulsa para mostrar (F4)")
+        self.reveal_button.clicked.connect(self.toggle_list)
+        rail.addWidget(self.reveal_button)
+        rail.addStretch()
+        self.splitter.addWidget(self.hidden_list_rail)
+        self.hidden_list_rail.hide()
         right = QWidget()
         video_layout = QVBoxLayout(right)
         video_layout.setContentsMargins(8, 0, 0, 0)
@@ -254,7 +280,7 @@ class Window(QMainWindow):
         self.video.media_changed.connect(self.update_media)
         self.update_media({})
         self.splitter.addWidget(right)
-        self.splitter.setSizes([350, 800])
+        self.splitter.setSizes([350, 0, 800])
         self.home = self.build_home()
         layout.addWidget(self.home, 1)
         layout.addWidget(self.splitter, 1)
@@ -290,7 +316,7 @@ class Window(QMainWindow):
         home = QWidget()
         layout = QVBoxLayout(home)
         layout.setContentsMargins(8, 12, 8, 8)
-        title = QLabel("Tu televisión. Tu cine.")
+        title = QLabel("Tu sofá en Springfield.")
         title.setObjectName("homeTitle")
         title.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         layout.addWidget(title)
@@ -299,6 +325,8 @@ class Window(QMainWindow):
         self.home_note.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         layout.addWidget(self.home_note)
         grid = QGridLayout()
+        self.home_grid = grid
+        self.collection_layout_state = None
         grid.setSpacing(12)
         self.home_tiles = {}
         for column, (kind, name, object_name) in enumerate((('live', 'TV EN VIVO', 'homeLive'),
@@ -309,12 +337,12 @@ class Window(QMainWindow):
             button.clicked.connect(lambda checked=False, kind=kind: self.section(kind))
             grid.addWidget(button, 0, column)
             self.home_tiles[kind] = button
-        self.home_favorites = QPushButton("★ FAVORITOS")
+        self.home_favorites = HomeTile("★ FAVORITOS", "#876086")
         self.home_favorites.setObjectName("homeFavorites")
         self.home_favorites.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.home_favorites.clicked.connect(lambda: self.show_collection('favorites'))
         grid.addWidget(self.home_favorites, 1, 0)
-        self.home_recent = QPushButton("ÚLTIMO REPRODUCIDO")
+        self.home_recent = HomeTile("ÚLTIMO REPRODUCIDO", "#335778")
         self.home_recent.setObjectName("homeRecent")
         self.home_recent.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.home_recent.clicked.connect(lambda: self.show_collection('recent'))
@@ -324,6 +352,14 @@ class Window(QMainWindow):
         for row in range(2):
             grid.setRowStretch(row, 1)
         layout.addLayout(grid, 1)
+        from PySide6.QtGui import QPixmap
+        images = Path(__file__).parent / 'assets/backgrounds'
+        for kind, tile in self.home_tiles.items():
+            stem = {'live': 'springfield-tv', 'vod': 'springfield-movies', 'series': 'springfield-series'}[kind]
+            candidates = sorted(images.glob(stem + '.*'))
+            if candidates:
+                image = QPixmap(str(candidates[0]))
+                tile.set_example(image if not image.isNull() else None)
         return home
 
     def show_home(self):
@@ -333,6 +369,9 @@ class Window(QMainWindow):
             tile.preview = QPixmap.fromImage(self.video.grabFramebuffer())
             tile.preview_title = self.now.text()
         self.splitter.hide()
+        self.list_button.hide()
+        self.home_button.setChecked(True)
+        self.player_button.setChecked(False)
         self.home.show()
         self.update_home()
 
@@ -340,15 +379,29 @@ class Window(QMainWindow):
         if hasattr(self, 'home'):
             self.home.hide()
         self.splitter.show()
+        self.list_button.show()
+        self.home_button.setChecked(False)
+        self.player_button.setChecked(True)
 
     def toggle_list(self):
-        self.left_panel.setVisible(self.left_panel.isHidden())
-        self.list_button.setChecked(not self.left_panel.isHidden())
+        self.set_list_visible(self.left_panel.isHidden())
+
+    def set_list_visible(self, visible):
+        if not visible and not self.left_panel.isHidden():
+            sizes = self.splitter.sizes()
+            if sizes[0] > 0:
+                self.sidebar_sizes = sizes
+        self.left_panel.setVisible(visible)
+        self.hidden_list_rail.setVisible(not visible)
+        self.list_button.setChecked(visible)
+        if visible:
+            self.splitter.setSizes(self.sidebar_sizes)
+        else:
+            self.splitter.setSizes([0, 36, max(1, sum(self.sidebar_sizes) - 36)])
 
     def focus_search(self):
         self.show_player()
-        self.left_panel.show()
-        self.list_button.setChecked(True)
+        self.set_list_visible(True)
         self.search.setFocus()
         self.search.selectAll()
 
@@ -381,6 +434,27 @@ class Window(QMainWindow):
         favorites = self.library_rows('favorites')
         recent = self.library_rows('recent')
         self.home_favorites.setText(f"★ FAVORITOS\n\n{len(favorites)} guardados")
+        self.home_favorites.setVisible(bool(favorites))
+        self.home_recent.setVisible(bool(recent))
+        self.home_grid.setRowStretch(1, 1 if favorites or recent else 0)
+        state = (bool(favorites), bool(recent))
+        if state != self.collection_layout_state:
+            self.home_grid.removeWidget(self.home_favorites)
+            self.home_grid.removeWidget(self.home_recent)
+            self.home_grid.addWidget(self.home_favorites, 1, 0, 1, 3 if favorites and not recent else 1)
+            self.home_grid.addWidget(self.home_recent, 1, 0 if recent and not favorites else 1,
+                                     1, 3 if recent and not favorites else 2)
+            self.collection_layout_state = state
+        for tile, entries in ((self.home_favorites, favorites), (self.home_recent, recent)):
+            if entries:
+                kind = 'series' if entries[0]['_kind'] == 'episode' else entries[0]['_kind']
+                tile.set_example(self.home_tiles[kind].example)
+                tile.preview = self.home_tiles[kind].preview if self.home_tiles[kind].preview_title == str(entries[0]['name']) else None
+                tile.preview_title = str(entries[0]['name'])
+            else:
+                tile.preview = None
+                tile.set_example(None)
+                tile.preview_title = ''
         name = str(recent[0]['name']) if recent else 'Aún no hay historial'
         self.home_recent.setText("ÚLTIMO REPRODUCIDO\n\n" + (name[:48] + '…' if len(name) > 48 else name) + "\nVer recientes →")
         self.home_note.setText("Demostración · contenido ficticio" if self.demo else
@@ -865,17 +939,17 @@ class Window(QMainWindow):
 
 
 STYLE = """
-QWidget { background: #080a0f; color: #e2e7f0; font-size: 14px; }
-QLabel#brand { color: #00e5ff; font-size: 18px; font-weight: bold; }
-QWidget#sidebar { background: #11141d; border: 1px solid #222838; }
+QWidget { background: #111d30; color: #e2e7f0; font-size: 14px; }
+QLabel#brand { color: #ffda45; font-size: 18px; font-weight: bold; }
+QWidget#sidebar { background: #17263d; border: 1px solid #314660; border-radius: 12px; }
 QLabel#listHeading { color: #e2e7f0; font-weight: bold; padding: 4px; }
-QPushButton { background: #161b26; border: 1px solid #2d3748; border-radius: 0px; padding: 7px 10px; min-height: 16px; }
-QPushButton:hover { background: #1f2433; border-color: #00e5ff; }
-QPushButton:checked { background: #0078d7; border-color: #00e5ff; color: white; }
+QPushButton { background: #20334f; border: 1px solid #3b536e; border-radius: 8px; padding: 7px 10px; min-height: 16px; }
+QPushButton:hover { background: #2c4260; border-color: #f6cc3b; }
+QPushButton:checked { background: #ffda45; border-color: #ffda45; color: #16243a; }
 QPushButton:disabled { color: #738197; }
-QLineEdit, QComboBox { background: #0c0e14; border: 1px solid #2d3748; border-radius: 0px; padding: 7px; }
+QLineEdit, QComboBox { background: #0c0e14; border: 1px solid #2d3748; border-radius: 8px; padding: 7px; }
 QLineEdit:focus, QComboBox:focus { border-color: #00e5ff; }
-QListWidget { background: #080a0f; border: none; }
+QListWidget { background: #17263d; border: none; }
 QListWidget::item { padding: 8px 10px; border-bottom: 1px solid #222838; }
 QListWidget::item:selected { background: #1f344b; }
 QLabel#streamInfo { color: #00e5ff; font-size: 12px; font-family: 'JetBrains Mono'; }
@@ -884,7 +958,14 @@ QPushButton#homeMovies { background: #d83b01; font-size: 22px; text-align: left;
 QPushButton#homeSeries { background: #107c41; font-size: 22px; text-align: left; padding: 24px; border: none; }
 QPushButton#homeFavorites { background: #007f76; font-size: 20px; text-align: left; padding: 20px; border: none; }
 QPushButton#homeRecent { background: #161b26; font-size: 20px; text-align: left; padding: 20px; border: 1px solid #2d3748; }
-QLabel#homeTitle { font-size: 28px; font-weight: 300; }
+QLabel#homeTitle { font-size: 28px; font-weight: 600; color: #ffe681; }
+QWidget#topNav { background: #1e3049; border: 1px solid #3b536e; border-radius: 16px; }
+QWidget#topNav QPushButton { border: none; border-radius: 12px; padding: 7px 16px; background: transparent; color: #bac8dc; }
+QWidget#topNav QPushButton:hover { background: #2b415d; color: white; }
+QWidget#topNav QPushButton:checked { background: #ffda45; color: #17263d; font-weight: bold; }
+QPushButton#listToggle { border-radius: 15px; font-size: 18px; padding: 3px 10px; }
+QPushButton#sidebarReveal { background: #ffda45; color: #17263d; font-size: 11px; font-weight: bold; padding: 4px 0px; border-radius: 8px; min-height: 64px; border: none; }
+QPushButton#sidebarReveal:hover { background: #ffe787; }
 QScrollBar:vertical { background: #11141d; width: 8px; margin: 0px; }
 QScrollBar::handle:vertical { background: #0078d7; min-height: 24px; }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }

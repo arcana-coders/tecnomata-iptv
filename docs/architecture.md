@@ -166,3 +166,20 @@ secrets no guardados y modo600. Smokes tracks/live siguen PASS; smoke_gui ocho
 cambios, 131 frames, mismo motor/widget/ventana. Capturas ficticias inspeccionadas.
 Inter oficial incluida en wheel con OFL; pip wheel usa build isolation (venv no
 incluye setuptools, no usar --no-build-isolation en este entorno).
+
+## Ejemplos Springfield y rail — 2026-09-16
+
+HomeTile separa example (QPixmap de asset local empaquetado) y preview (frame en
+RAM), con prioridad preview. Pintura recorta esquinas y usa degradado bajo texto.
+Sin depender de red/catálogo para tres tarjetas principales. Colecciones sólo si
+hay datos; grid reacomoda spans al cambiar estado vacío/no vacío. Preview de
+colección sólo si coincide nombre de fuente, fallback ilustrado genérico del tipo.
+No se guardan imágenes del proveedor ni se amplía SQLite. Assets estáticos como
+package-data, origen/prompts en backgrounds/README.md; ver design.md.
+
+Splitter tiene izquierda, rail fijo36px normalmente oculto y reproductor. Al
+ocultar izquierda conserva tamaños y muestra rail › Lista con botón; al recuperar
+oculta rail y restaura tamaños. No overlay sobre QOpenGLWidget ni nuevo motor.
+Header Inicio/Ver marca estado, icono lista sólo en player; dona propia Qt no
+requiere fuente emoji. F4/icono/rail/Ctrl+K convergen en set_list_visible.
+48 pruebas y smoke_library real comprueban condiciones, restauración y assets.

@@ -39,6 +39,17 @@ def check():
             return
         assert len(recent) == 1 and recent[0]['name'] == 'Canal de prueba B'
         assert window.video.frames > 10
+        engine_id = id(window.video.engine)
+        window.toggle_list()
+        app.processEvents()
+        assert window.reveal_button.isVisible() and not window.left_panel.isVisible()
+        assert window.splitter.sizes()[1] == 36
+        assert window.reveal_button.width() > 0
+        window.grab().save(str(root / 'runtime/springfield-hidden-list.png'))
+        window.reveal_button.click()
+        assert window.left_panel.isVisible() and not window.hidden_list_rail.isVisible()
+        assert id(window.video.engine) == engine_id
+        assert all(tile.example is not None and not tile.example.isNull() for tile in window.home_tiles.values())
         window.grab().save(str(root / 'runtime/metro-player.png'))
         window.show_home()
         QTimer.singleShot(200, finish)
