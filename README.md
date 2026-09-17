@@ -4,6 +4,19 @@ App personal de escritorio para Arturo en Linux. Interfaz inspirada en los flujo
 de IPTV Smarters Pro, con TV en vivo, películas y series del proveedor Xtream.
 Nombre, código y recursos propios; no utiliza recursos de Smarters.
 
+## Capturas
+
+Capturas reales de la app con datos de demostración (`--demo`, sin credenciales
+ni contenido de ningún proveedor).
+
+| Inicio | Reproductor |
+|---|---|
+| ![Pantalla de inicio con el tema Springfield: TV en vivo, películas, series, favoritos y último reproducido](docs/screenshots/inicio-springfield.webp) | ![Reproductor con tema Mcfly: lista de favoritos, video y panel de audio/subtítulos](docs/screenshots/reproductor-mcfly.webp) |
+
+| Los cuatro temas | Favoritos y progreso |
+|---|---|
+| ![Los cuatro temas lado a lado: Springfield, Mcfly, Retro 80s/90s y Dog Eyes](docs/screenshots/cuatro-temas.webp) | ![Lista de favoritos con barra de progreso y botones Continuar / Iniciar nuevamente](docs/screenshots/continuar-favoritos.webp) |
+
 ## Pertenece a
 
 - [Índice de memoria](../asistente/projects/tecnomata-iptv/index.md)
