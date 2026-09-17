@@ -30,7 +30,7 @@
   cierra la cuenta/caché. Error de almacén se informa y permite uso sólo en sesión.
   GNOME Keyring real probado con entrada ficticia aislada y eliminada al terminar.
   [Documentación primaria de keyring](https://github.com/jaraco/keyring).
-- SQLite para favoritos/progreso sigue pendiente; nunca contraseñas en SQLite.
+- SQLite guarda favoritos, recientes y progreso por contenido; ver [progreso](progress.md). Nunca contraseñas en SQLite.
 
 ## Dependencia local de este equipo
 
@@ -297,3 +297,17 @@ listener -F activo antes del servicio, controles pause/play/volume/stop y cierre
 No se inspecciona ni valida subtítulos del proveedor. Versión nueva probada,
 reproducción real de Arturo se mantiene abierta para no perder posición; activar
 actualización al cerrar/reabrir. Progreso aún pendiente.
+
+## Progreso individual — 2026-09-16
+
+Películas y episodios guardan posición, audio, subtítulos/Desactivados y tamaño,
+independientemente por cuenta y contenido. Checkpoint cada 5 s, pausa/Stop/cambio/
+cierre/pistas/tamaño; EOF normal reinicia posición manteniendo preferencias.
+Tabla SQLite aditiva, independiente del recorte de recientes. Restore espera
+media/duración/pistas y confirmación del seek; fallos conservan el punto anterior.
+Desde inicio en timeline permite reiniciar. [Diseño y semántica](progress.md).
+62 pruebas y smoke_progress nativo PASS: dos películas y dos episodios retoman
+posiciones/pistas/tamaños distintos tras cerrar/reabrir. No validado con proveedor.
+No reiniciar la película actual; versión vieja no puede guardar retroactivamente.
+Activar cerrando/reabriendo cuando Arturo termine. Próximo: validar reanudación
+con servicio real; fichas/portadas/EPG quedan pendientes.

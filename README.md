@@ -125,7 +125,8 @@ identidad `default-account`), nunca en archivos del repo. Sin recordar, sólo RA
 No guardar listas reales, URLs de
 reproducción, respuestas privadas ni logs HTTP en Git. No leer ni migrar datos de
 IPTVnator automáticamente. No alterar Hyprland o MPV como efecto de esta app.
-Favoritos y recientes implementados; progreso sigue pendiente. El proveedor real está validado por
+Favoritos, recientes y progreso individual de películas/episodios implementados.
+Detalles y recuperación en [progreso](docs/progress.md). El proveedor real está validado por
 Arturo para canales y cambios, películas y series. Los cambios de caché/cuenta
 tienen pruebas propias y se validan en la versión nueva desde el formulario.
 

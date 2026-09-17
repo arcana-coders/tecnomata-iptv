@@ -39,7 +39,7 @@ validación dependiente explícitamente pendiente.
 0–3 completas; Arturo confirma video real de canales (y cambios), película y serie.
 Fase 4 iniciada: precarga/caché en RAM de tres secciones y episodios, cuenta en
 GNOME Keyring y restauración automática implementadas. Favoritos/recientes y audio/subtítulos implementados. Fichas/portadas, temporadas
-navegables, EPG, progreso y seek siguen pendientes.
+navegables y EPG siguen pendientes. Seek y progreso individual VOD/episodios implementados; [detalles](progress.md).
 
 ## Límites y criterio de cambio
 
@@ -130,3 +130,17 @@ Generador nativo image_gen; prompts en assets/backgrounds/theme-prompts-v2.json.
 53 pruebas y smoke_seek con video nativo ficticio: película y episodio avanzan
 a 12 s y retroceden a 3 s en pausa; Stop limpia barra/fuente. No valida seek
 con proveedor. scripts/smoke_library conserva prueba de biblioteca y cuatro temas.
+
+## Progreso individual — 2026-09-16
+
+Películas y episodios guardan posición, audio, subtítulos/Desactivados y tamaño,
+independientemente por cuenta y contenido. Checkpoint cada 5 s, pausa/Stop/cambio/
+cierre/pistas/tamaño; EOF normal reinicia posición manteniendo preferencias.
+Tabla SQLite aditiva, independiente del recorte de recientes. Restore espera
+media/duración/pistas y confirmación del seek; fallos conservan el punto anterior.
+Desde inicio en timeline permite reiniciar. [Diseño y semántica](progress.md).
+62 pruebas y smoke_progress nativo PASS: dos películas y dos episodios retoman
+posiciones/pistas/tamaños distintos tras cerrar/reabrir. No validado con proveedor.
+No reiniciar la película actual; versión vieja no puede guardar retroactivamente.
+Activar cerrando/reabriendo cuando Arturo termine. Próximo: validar reanudación
+con servicio real; fichas/portadas/EPG quedan pendientes.

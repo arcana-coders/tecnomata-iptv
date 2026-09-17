@@ -2,6 +2,7 @@ import argparse
 import sys
 import json
 import os
+import time
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Qt, QTimer, QSettings
@@ -15,6 +16,7 @@ from .player import VideoWidget
 from .catalog import CatalogCache, KINDS
 from .accounts import AccountStore, StorageError
 from .library import LibraryStore, LibraryError, account_scope
+from .progress import track_choice, resolve_track
 from .mpris import MprisBridge
 from .themes import THEMES, stylesheet, illustration
 from .media import describe_video, track_label
@@ -99,6 +101,13 @@ class Window(QMainWindow):
         self.library_scope = 'demo' if demo else None
         self.collection_view = None
         self.pending_history = None
+        self.progress_context = None
+        self.pending_resume = None
+        self.resume_target = None
+        self.progress_blocked = False
+        self.restoring_progress = False
+        self.last_checkpoint = 0
+        self.progress_snapshot = None
         self.current_series_name = ''
         self.client = None
         self.cache = None
@@ -280,6 +289,9 @@ class Window(QMainWindow):
         timeline_layout.addWidget(self.elapsed)
         timeline_layout.addWidget(self.seek_slider, 1)
         timeline_layout.addWidget(self.total_time)
+        self.restart_button = QPushButton("Desde inicio")
+        self.restart_button.clicked.connect(self.restart_content)
+        timeline_layout.addWidget(self.restart_button)
         control_layout.addWidget(self.timeline)
         self.timeline.hide()
         self.seek_duration = 0
@@ -666,12 +678,81 @@ class Window(QMainWindow):
             item.setData(Qt.ItemDataRole.UserRole, row)
             self.activate(item)
 
+    def save_progress(self, force=False, completed=False):
+        if not self.progress_context or self.pending_resume or self.resume_target is not None or self.restoring_progress or self.progress_blocked:
+            return
+        if not completed and (not self.video.media_ready or not self.video.pending_url):
+            return
+        now = time.monotonic()
+        if not force and now - self.last_checkpoint < 5:
+            return
+        info = dict(self.position_info)
+        if self.video.engine and self.video.media_ready and not completed:
+            try:
+                info.update(position=self.video.engine.time_pos, duration=self.video.engine.duration)
+            except Exception:
+                return
+        if info.get('duration') and info.get('position') is not None:
+            self.progress_snapshot = info
+        elif completed:
+            info = self.progress_snapshot or {}
+        if not info.get('duration') or info.get('position') is None:
+            return
+        try:
+            self.library.save_progress(*self.progress_context, position=info['position'], duration=info['duration'],
+                audio=track_choice(self.video.media_info,'audio'), subtitle=track_choice(self.video.media_info,'sub'),
+                subtitle_size=self.sub_size_percent, completed=completed)
+            self.last_checkpoint = now
+        except LibraryError as exc:
+            self.show_error(str(exc))
+
+    def restore_progress(self, info):
+        if self.resume_target is not None:
+            if abs(info.get('position',0) - self.resume_target) < 1:
+                self.resume_target = None
+            elif time.monotonic() > self.resume_deadline:
+                self.resume_target = None
+                self.progress_blocked = True
+                self.status.setText('No se pudo retomar la posición. El punto guardado se conserva; puedes elegir Desde inicio.')
+            return
+        if not self.pending_resume or not self.video.media_ready or not info.get('duration'):
+            return
+        saved = self.pending_resume
+        self.pending_resume = None
+        self.restoring_progress = True
+        try:
+            self.adjust_subtitle_size(saved['subtitle_size'] - self.sub_size_percent)
+            for key, kind in (('audio','audio'),('subtitle','sub')):
+                track = resolve_track(saved[key],self.video.media_info.get(kind,[]))
+                if track is not None:
+                    self.video.select_track(kind,track)
+            if not saved['completed'] and saved['position'] > 0:
+                target = min(saved['position'],info['duration'])
+                self.resume_target = target
+                self.resume_deadline = time.monotonic()+5
+                if not info.get('seekable') or not self.video.seek_to(target):
+                    self.resume_target = None
+                    self.progress_blocked = True
+                    self.status.setText('Este contenido no permite retomar la posición. El punto guardado se conserva.')
+        finally:
+            self.restoring_progress = False
+
+    def restart_content(self):
+        if self.playing_kind not in ('vod','series') or not self.video.seek_to(0):
+            return
+        self.pending_resume = None
+        self.progress_blocked = False
+        self.resume_target = 0
+        self.resume_deadline = time.monotonic()+5
+
     def toggle_timeline(self):
         if self.playing_kind in ('vod', 'series') and self.video.pending_url:
             self.timeline.setVisible(self.timeline.isHidden())
 
     def update_position(self, info):
         self.position_info = dict(info)
+        self.restore_progress(info)
+        self.save_progress()
         self.publish_mpris()
         def stamp(value):
             value = max(0, int(value or 0))
@@ -680,6 +761,7 @@ class Window(QMainWindow):
             return f'{hours}:{minutes:02}:{seconds:02}' if hours else f'{minutes:02}:{seconds:02}'
         self.seek_duration = info.get('duration', 0) or 0
         self.seek_slider.setEnabled(bool(info.get('seekable') and self.seek_duration > 0 and self.playing_kind in ('vod','series')))
+        self.restart_button.setEnabled(self.seek_slider.isEnabled())
         self.seek_slider.setToolTip('Arrastra o pulsa para adelantar o retroceder' if self.seek_slider.isEnabled() else 'Este contenido aún no indica duración o no permite desplazamiento')
         self.elapsed.setText(stamp(info.get('position', 0)))
         self.total_time.setText(stamp(self.seek_duration))
@@ -720,8 +802,14 @@ class Window(QMainWindow):
         self.sub_size_label.setText(f'{self.sub_size_percent}%')
         if not self.demo:
             QSettings('Tecnomata','IPTV').setValue('subtitleSizePercent',self.sub_size_percent)
+        self.save_progress(force=True)
 
     def playback_state(self, message):
+        if message == 'En pausa':
+            self.save_progress(force=True)
+        elif message == 'Reproducción terminada':
+            self.save_progress(force=True, completed=True)
+            self.progress_context = None
         self.playback_status = 'Paused' if message == 'En pausa' else 'Playing' if message == 'Reproduciendo' else 'Stopped'
         self.publish_mpris()
         self.pause_button.setText('▶ Seguir' if message == 'En pausa' else 'Ⅱ Pausa')
@@ -739,6 +827,10 @@ class Window(QMainWindow):
                     self.show_error(str(exc))
 
     def stop_playback(self):
+        self.save_progress(force=True)
+        self.progress_context = None
+        self.pending_resume = None
+        self.resume_target = None
         self.pending_history = None
         self.video.stop()
         self.playing_kind = None
@@ -770,6 +862,8 @@ class Window(QMainWindow):
             box.setEnabled(bool(rows))
             box.setToolTip(box.currentText())
             box.blockSignals(False)
+
+        self.save_progress(force=True)
 
     def sync_busy(self):
         # Preloading must not lock browsing or playback of loaded sections.
@@ -1102,6 +1196,19 @@ class Window(QMainWindow):
             except ServiceError as exc:
                 self.show_error(str(exc))
                 return
+        self.save_progress(force=True)
+        self.progress_context = (self.library_scope, source, dict(row), parent) if source in ('vod','episode') and self.library and self.library_scope else None
+        self.pending_resume = None
+        self.resume_target = None
+        self.progress_blocked = False
+        self.progress_snapshot = None
+        self.last_checkpoint = 0
+        if self.progress_context:
+            try:
+                self.pending_resume = self.library.progress(*self.progress_context)
+            except LibraryError as exc:
+                self.progress_blocked = True
+                self.show_error(str(exc))
         self.choose_content(row)
         self.now.setText(str(row.get("name", "Reproduciendo")))
         self.timeline.hide()
@@ -1125,6 +1232,7 @@ class Window(QMainWindow):
             self.status.setText("Espera a que termine la consulta antes de cerrar (máximo 20 segundos por solicitud).")
             event.ignore()
             return
+        self.save_progress(force=True)
         if self.mpris:
             self.mpris.close()
         self.video.dispose()

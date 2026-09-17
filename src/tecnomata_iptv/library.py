@@ -1,5 +1,7 @@
 """Account-scoped favorites and recent successful plays, without account secrets."""
 import hashlib
+import json
+import math
 import os
 import sqlite3
 from pathlib import Path
@@ -36,6 +38,11 @@ class LibraryStore:
                 parent TEXT NOT NULL DEFAULT '', series_name TEXT NOT NULL DEFAULT '',
                 favorite INTEGER NOT NULL DEFAULT 0, played REAL,
                 PRIMARY KEY (scope, kind, id, parent))''')
+            self.db.execute('''CREATE TABLE IF NOT EXISTS progress (
+                scope TEXT NOT NULL, kind TEXT NOT NULL, id TEXT NOT NULL, parent TEXT NOT NULL,
+                position REAL NOT NULL, duration REAL NOT NULL, audio TEXT, subtitle TEXT,
+                subtitle_size INTEGER NOT NULL, completed INTEGER NOT NULL DEFAULT 0,
+                updated REAL NOT NULL, PRIMARY KEY(scope,kind,id,parent))''')
             self.db.commit()
         except (OSError, sqlite3.Error):
             raise LibraryError('No se pudo abrir la biblioteca local.') from None
@@ -98,6 +105,46 @@ class LibraryStore:
                 '_series_name': item['series_name'], '_played': item['played']} for item in entries]
         except sqlite3.Error:
             raise LibraryError('No se pudo leer la biblioteca local.') from None
+
+    def progress(self, scope, kind, row, parent=''):
+        if kind not in ('vod','episode'):
+            return None
+        entry = self._entry(scope, kind, row, parent)
+        try:
+            item = self.db.execute('SELECT * FROM progress WHERE scope=? AND kind=? AND id=? AND parent=?',entry[:4]).fetchone()
+            if not item:
+                return None
+            result = dict(item)
+            for key in ('audio','subtitle'):
+                result[key] = json.loads(result[key]) if result[key] else None
+            return result
+        except (sqlite3.Error, ValueError):
+            raise LibraryError('No se pudo leer el punto de reproducción.') from None
+
+    def save_progress(self, scope, kind, row, parent='', *, position, duration, audio=None,
+                      subtitle=None, subtitle_size=100, completed=False):
+        if kind not in ('vod','episode'):
+            return
+        entry = self._entry(scope, kind, row, parent)
+        def clean(choice):
+            if choice == 'no':
+                return json.dumps('no')
+            if not isinstance(choice,dict):
+                return None
+            return json.dumps({key:choice[key] for key in ('id','lang','codec','title') if key in choice},ensure_ascii=False)
+        try:
+            position, duration = float(position), float(duration)
+            if not math.isfinite(position) or not math.isfinite(duration) or position < 0 or duration <= 0:
+                return
+            values = (*entry[:4], 0 if completed else min(position,duration), duration,
+                      clean(audio),clean(subtitle),max(50,min(250,int(subtitle_size))),int(completed),time.time())
+            with self.db:
+                self.db.execute('''INSERT INTO progress VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                    ON CONFLICT(scope,kind,id,parent) DO UPDATE SET position=excluded.position,
+                    duration=excluded.duration,audio=excluded.audio,subtitle=excluded.subtitle,
+                    subtitle_size=excluded.subtitle_size,completed=excluded.completed,updated=excluded.updated''',values)
+        except sqlite3.Error:
+            raise LibraryError('No se pudo guardar el punto de reproducción.') from None
 
     def close(self):
         self.db.close()

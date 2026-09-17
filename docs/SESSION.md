@@ -1,5 +1,19 @@
 # Punto de reanudación — 2026-09-16
 
+## Progreso individual — 2026-09-16
+
+Películas y episodios guardan posición, audio, subtítulos/Desactivados y tamaño,
+independientemente por cuenta y contenido. Checkpoint cada 5 s, pausa/Stop/cambio/
+cierre/pistas/tamaño; EOF normal reinicia posición manteniendo preferencias.
+Tabla SQLite aditiva, independiente del recorte de recientes. Restore espera
+media/duración/pistas y confirmación del seek; fallos conservan el punto anterior.
+Desde inicio en timeline permite reiniciar. [Diseño y semántica](progress.md).
+62 pruebas y smoke_progress nativo PASS: dos películas y dos episodios retoman
+posiciones/pistas/tamaños distintos tras cerrar/reabrir. No validado con proveedor.
+No reiniciar la película actual; versión vieja no puede guardar retroactivamente.
+Activar cerrando/reabriendo cuando Arturo termine. Próximo: validar reanudación
+con servicio real; fichas/portadas/EPG quedan pendientes.
+
 ## Subtítulos ajustables y título en Waybar — 2026-09-16
 
 Arturo observa dos pistas de subtítulos en una película: aparecen tras cambiar

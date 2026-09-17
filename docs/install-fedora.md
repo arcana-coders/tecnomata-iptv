@@ -62,7 +62,7 @@ TV/películas/series se precargan en RAM; Actualizar listas las renueva.
 QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q
 ```
 
-Actualmente 56 pruebas. Los mocks, nombres y cuentas de los tests son ficticios.
+Actualmente 62 pruebas. Los mocks, nombres y cuentas de los tests son ficticios.
 Las pruebas gráficas requieren sesión Wayland/X11 y videos locales; ver
 [diagnóstico de playback](playback-troubleshooting.md). No subimos videos, RPM,
 capturas ni entornos Python: viven en runtime/.venv, ignorados por Git.
@@ -84,7 +84,7 @@ y docs/design.md versionados. Favoritos/recientes son locales en XDG_DATA_HOME/
 tecnomata-iptv/library.sqlite3 (default ~/.local/share/tecnomata-iptv/), no Git.
 Para migrar biblioteca copiar ese archivo con app cerrada y conservar modo600;
 reconectar la misma cuenta recupera scope. Secret Service se prepara aparte,
-SQLite no contiene contraseña/servidor/usuario ni URLs. Progreso VOD no implementado.
+SQLite no contiene contraseña/servidor/usuario ni URLs. Progreso VOD/episodios implementado, con migración aditiva automática; ver [progreso](progress.md).
 
 Los tres fondos originales de Inicio vienen empaquetados con la app; no requieren
 descargas ni reproducción. Ver [diseño](design.md).

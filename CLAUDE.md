@@ -22,7 +22,7 @@ IPTVnator. `CatalogCache` es por cuenta y sesión: precargar categorías/listas 
 live/vod/series en segundo plano, reutilizar al entrar/cambiar categoría y cachear
 episodios. Actualizar listas/cambiar/olvidar cuenta invalidan el caché.
 No bloquear navegación/reproducción por la precarga. Pruebas GUI de caché/cuenta:
-`QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q` (56 pruebas actualmente).
+`QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q` (62 pruebas actualmente).
 
 Cerrar trabajo actualizando `docs/SESSION.md`, el índice y desarrollo en
 `../asistente/projects/tecnomata-iptv/`, más `../asistente/journal.md`.
@@ -63,7 +63,7 @@ tras file-loaded + time_pos, no al intentar abrir; polling no declara playing
 antes de media_ready. Cambiar cuenta aísla; Olvidar oculta, no borra biblioteca.
 Colecciones siguen visibles al abrir TV/VOD/episodio; serie abre episodios.
 Pruebas aisladas con SQLite temporal/memory, nunca historial real. Smoke nuevo
-scripts/smoke_library.py; capturas únicamente ficticias. Progreso VOD pendiente.
+scripts/smoke_library.py; capturas únicamente ficticias. Progreso VOD/episodios implementado; ver docs/progress.md.
 
 Diseño más reciente Springfield en docs/design.md: acentos amarillos/rosa dona,
 base azul noche, navegación Inicio/Ver segmentada. Base estructural ZIP permanece.
@@ -94,3 +94,11 @@ QSettings subtitleSizePercent, demo no guarda. MPRIS worker dbus-fast, Qt reques
 para operaciones GUI, sin URLs/metadata cruda. Demo no exporta salvo smoke explícito.
 Pruebas nuevas smoke_subtitles y smoke_mpris con pistas/títulos sintéticos;
 no reiniciar reproducción real de Arturo para esta entrega (posición no guardada).
+
+## Progreso individual
+
+Leer docs/progress.md. Tabla progress independiente de recientes, por cuenta/
+tipo/ID/serie. Guardar antes de reemplazar fuente y cerrar; no guardar durante
+restore/seek sin confirmar ni antes de media_ready. EOF normal marca completo,
+Stop no. smoke_progress usa videos ficticios y SQLite temporal. No reiniciar
+la app vieja mientras Arturo ve su película: no tiene guardado retroactivo.
