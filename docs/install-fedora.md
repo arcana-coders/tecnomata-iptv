@@ -7,7 +7,7 @@ Entorno probado: Fedora 44, Hyprland/Wayland, Python 3.14 y OpenGL funcional.
 
 ```bash
 cd /home/tecnomata/tecnomata
-git clone -o gitea ssh://git@192.168.1.175:2222/arturo/tecnomata-iptv.git
+git clone https://github.com/arcana-coders/tecnomata-iptv.git
 cd tecnomata-iptv
 python -m venv .venv
 .venv/bin/pip install -r requirements.lock
@@ -15,7 +15,8 @@ python -m venv .venv
 ```
 
 El clone usa rama `main`. Mantener memoria `asistente` como repo hermano para
-los enlaces locales. `AGENTS.md` es un enlace a `CLAUDE.md`.
+los enlaces locales. `AGENTS.md` es un enlace a `CLAUDE.md`. Arturo mantiene
+además un espejo en un Gitea privado autohospedado (remoto `gitea`, no público).
 
 ## libmpv
 
@@ -70,7 +71,7 @@ capturas ni entornos Python: viven en runtime/.venv, ignorados por Git.
 Leer [SESSION](SESSION.md) antes de continuar fases. Para actualizar:
 
 ```bash
-git pull --ff-only gitea main
+git pull --ff-only origin main
 .venv/bin/pip install -r requirements.lock
 .venv/bin/pip install -e .
 ```

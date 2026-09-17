@@ -10,3 +10,4 @@ build/
 dist/
 *.sqlite3
 *.sqlite3-journal
+stitch_*.zip

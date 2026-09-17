@@ -12,8 +12,7 @@ Nombre, código y recursos propios; no utiliza recursos de Smarters.
 - [Estado y cómo retomar](docs/SESSION.md)
 - [Diseño Metro del ZIP y adaptación](docs/design.md)
 - [Instalación/recuperación en Fedora](docs/install-fedora.md)
-- Gitea privado: [arturo/tecnomata-iptv](http://192.168.1.175:3000/arturo/tecnomata-iptv), rama `main`.
-- Memoria en Gitea: [índice del proyecto](http://192.168.1.175:3000/arturo/asistente/src/branch/master/projects/tecnomata-iptv/index.md).
+- Espejo de trabajo: Gitea privado autohospedado, rama `main` (remoto `gitea`, no público).
 
 ## Ejecutar
 
