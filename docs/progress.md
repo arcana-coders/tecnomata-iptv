@@ -72,3 +72,16 @@ Prueba gráfica: scripts/smoke_collection_progress.py con SQLite temporal y vide
 local ficticio, cuatro temas/lista estrecha y clics reales libmpv; capturas sólo
 ficticias en runtime ignorado. Tests: tests/test_collection_progress.py (acciones,
 completado/sin iniciar, favorito, episodio por serie, migración y poda/aislamiento).
+
+## Contraste de selección — 2026-09-16
+
+Arturo confirma funciones y detecta texto claro sobre cian al Continuar en Mcfly.
+CollectionRow necesitaba WA_StyledBackground para pintar el fondo oscuro QSS: el
+delegate pintaba acento por debajo. Ahora fondo oscuro explícito y borde de acento
+identifican la tarjeta elegida. Filas sencillas seleccionadas usan panel aclarado
+en lugar del highlight de Qt, manteniendo texto legible; contenido elegido conserva
+acento/texto oscuro. Revisadas capturas ficticias de los cuatro temas.
+66 pruebas y smoke_collection_progress PASS, ahora mide contraste título/progreso
+sobre fondo renderizado de tarjeta seleccionada: mínimo 4,5:1 en cada tema.
+Botones/reanudación/series siguen pasando. No reiniciar reproducción real; activar
+al cerrar/reabrir. Arturo confirma progreso/barras/acciones con su servicio.

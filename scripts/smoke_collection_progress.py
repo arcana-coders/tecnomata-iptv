@@ -4,6 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtTest import QTest
+from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import QApplication
 from tecnomata_iptv.app import Window,configure_appearance
 from tecnomata_iptv.library import LibraryStore
@@ -46,6 +47,18 @@ def start():
                 assert widget.restart_button.geometry().bottom() < widget.height(), (key,widget.height(),widget.restart_button.geometry())
                 assert widget.continue_button.width() >= widget.continue_button.fontMetrics().horizontalAdvance(widget.continue_button.text())+8
                 assert widget.restart_button.width() >= widget.restart_button.fontMetrics().horizontalAdvance(widget.restart_button.text())+8, (key,widget.width(),widget.restart_button.width(),widget.restart_button.fontMetrics().horizontalAdvance(widget.restart_button.text()))
+        window.choose_content(window.items.item(0).data(Qt.ItemDataRole.UserRole))
+        app.processEvents()
+        selected=window.items.itemWidget(window.items.item(0))
+        background=selected.grab().toImage().pixelColor(selected.width()-6,12)
+        def luminance(color):
+            values=[color.redF(),color.greenF(),color.blueF()]
+            linear=[v/12.92 if v<=.04045 else ((v+.055)/1.055)**2.4 for v in values]
+            return sum(a*b for a,b in zip(linear,(.2126,.7152,.0722)))
+        for label in (selected.title,selected.status):
+            foreground=label.palette().color(QPalette.ColorRole.WindowText)
+            levels=sorted((luminance(background),luminance(foreground)))
+            assert (levels[1]+.05)/(levels[0]+.05)>=4.5, (key,background.name(),foreground.name())
         window.grab().save(str(root/f'runtime/{key}-collection-progress.png'))
     click(find('vod',1).continue_button); QTimer.singleShot(100,check)
 

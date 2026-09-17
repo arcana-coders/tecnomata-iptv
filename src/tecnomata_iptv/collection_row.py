@@ -58,6 +58,7 @@ class CollectionRow(QWidget):
     def __init__(self,title,favorite,series=False):
         super().__init__()
         self.setObjectName('collectionRow')
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground,True)
         self.series = series
         layout = QVBoxLayout(self); layout.setContentsMargins(5,5,8,5); layout.setSpacing(3)
         header = QHBoxLayout(); header.setSpacing(5)

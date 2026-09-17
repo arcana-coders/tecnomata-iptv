@@ -118,7 +118,7 @@ class ChosenContentDelegate(QStyledItemDelegate):
             painter.setPen(QColor('#101010'))
         else:
             if styled.state & QStyle.StateFlag.State_Selected:
-                painter.fillRect(option.rect, QColor('#484848') if key == 'dog-eyes' else styled.palette.highlight())
+                painter.fillRect(option.rect, QColor(THEMES[key][4]).lighter(135))
             painter.setPen(styled.palette.text().color())
         if index.data(COLLECTION_ROLE):
             painter.restore()

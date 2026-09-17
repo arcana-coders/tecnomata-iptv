@@ -1,5 +1,18 @@
 # Punto de reanudación — 2026-09-16
 
+## Contraste de selección — 2026-09-16
+
+Arturo confirma funciones y detecta texto claro sobre cian al Continuar en Mcfly.
+CollectionRow necesitaba WA_StyledBackground para pintar el fondo oscuro QSS: el
+delegate pintaba acento por debajo. Ahora fondo oscuro explícito y borde de acento
+identifican la tarjeta elegida. Filas sencillas seleccionadas usan panel aclarado
+en lugar del highlight de Qt, manteniendo texto legible; contenido elegido conserva
+acento/texto oscuro. Revisadas capturas ficticias de los cuatro temas.
+66 pruebas y smoke_collection_progress PASS, ahora mide contraste título/progreso
+sobre fondo renderizado de tarjeta seleccionada: mínimo 4,5:1 en cada tema.
+Botones/reanudación/series siguen pasando. No reiniciar reproducción real; activar
+al cerrar/reabrir. Arturo confirma progreso/barras/acciones con su servicio.
+
 ## Recientes y favoritos con progreso — 2026-09-16
 
 Películas y episodios de ambas colecciones usan CollectionRow: título/estrella,
