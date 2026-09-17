@@ -62,7 +62,7 @@ TV/películas/series se precargan en RAM; Actualizar listas las renueva.
 QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q
 ```
 
-Actualmente 62 pruebas. Los mocks, nombres y cuentas de los tests son ficticios.
+Actualmente 66 pruebas. Los mocks, nombres y cuentas de los tests son ficticios.
 Las pruebas gráficas requieren sesión Wayland/X11 y videos locales; ver
 [diagnóstico de playback](playback-troubleshooting.md). No subimos videos, RPM,
 capturas ni entornos Python: viven en runtime/.venv, ignorados por Git.

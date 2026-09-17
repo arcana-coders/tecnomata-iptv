@@ -1,5 +1,26 @@
 # Punto de reanudación — 2026-09-16
 
+## Recientes y favoritos con progreso — 2026-09-16
+
+Películas y episodios de ambas colecciones usan CollectionRow: título/estrella,
+barra, tiempo visto/duración/porcentaje y botones nativos Continuar/Iniciar nuevamente.
+Sin progreso indica Sin iniciar (reinicio habilitado); terminado muestra Visto/100%
+y permite reiniciar. TV conserva fila sencilla. Serie completa favorita muestra
+último episodio y progreso, con Continuar directo a ese episodio; nunca porcentaje
+global de la serie. Sin episodio guardado ofrece Ver episodios.
+
+Iniciar nuevamente recarga la fuente desde cero conservando audio/subtítulos/tamaño,
+sin borrar el punto anterior antes de cargar correctamente. Checkpoints actualizan
+las barras existentes, sin reconstruir lista ni perder foco/scroll. Metadata mínima
+nombre/extensión añadida por migración aditiva a progress y enriquecida desde entries;
+permite recuperar último episodio aunque desaparezca de los recientes100.
+
+66 pruebas PASS y smoke_collection_progress nativo PASS: clics reales de continuar/
+reiniciar, preferencias conservadas y serie favorita abre episodio. Cuatro temas y
+lista estrecha verifican geometría completa; capturas ficticias revisadas.
+No validado aún con proveedor. App real se mantiene abierta sin reinicio;
+cerrar/reabrir activa cambios. Detalle en [progreso](progress.md).
+
 ## Progreso individual — 2026-09-16
 
 Películas y episodios guardan posición, audio, subtítulos/Desactivados y tamaño,

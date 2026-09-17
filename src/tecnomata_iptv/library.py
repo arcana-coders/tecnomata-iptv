@@ -43,6 +43,17 @@ class LibraryStore:
                 position REAL NOT NULL, duration REAL NOT NULL, audio TEXT, subtitle TEXT,
                 subtitle_size INTEGER NOT NULL, completed INTEGER NOT NULL DEFAULT 0,
                 updated REAL NOT NULL, PRIMARY KEY(scope,kind,id,parent))''')
+            columns = {column['name'] for column in self.db.execute('PRAGMA table_info(progress)')}
+            for name in ('name','extension'):
+                if name not in columns:
+                    self.db.execute(f"ALTER TABLE progress ADD COLUMN {name} TEXT NOT NULL DEFAULT ''")
+            # Enrich checkpoints created before collection cards stored episode metadata.
+            self.db.execute("""UPDATE progress SET name=COALESCE((SELECT name FROM entries
+                WHERE entries.scope=progress.scope AND entries.kind=progress.kind
+                AND entries.id=progress.id AND entries.parent=progress.parent),'') WHERE name=''""")
+            self.db.execute("""UPDATE progress SET extension=COALESCE((SELECT extension FROM entries
+                WHERE entries.scope=progress.scope AND entries.kind=progress.kind
+                AND entries.id=progress.id AND entries.parent=progress.parent),'') WHERE extension=''""")
             self.db.commit()
         except (OSError, sqlite3.Error):
             raise LibraryError('No se pudo abrir la biblioteca local.') from None
@@ -121,6 +132,21 @@ class LibraryStore:
         except (sqlite3.Error, ValueError):
             raise LibraryError('No se pudo leer el punto de reproducción.') from None
 
+    def latest_episode(self, scope, series):
+        """Last watched episode of a series, independent of recent-history pruning."""
+        entry = self._entry(scope,'series',series)
+        try:
+            item = self.db.execute("""SELECT * FROM progress WHERE scope=? AND kind='episode'
+                AND parent=? ORDER BY updated DESC, id DESC LIMIT 1""",(scope,entry[2])).fetchone()
+            if not item:
+                return None
+            row = {'stream_id':item['id'], 'name':item['name'] or 'Episodio',
+                   'container_extension':item['extension'] or None, '_kind':'episode',
+                   '_parent':item['parent'], '_series_name':entry[4]}
+            return row, self.progress(scope,'episode',row,item['parent'])
+        except sqlite3.Error:
+            raise LibraryError('No se pudo leer el último episodio de esta serie.') from None
+
     def save_progress(self, scope, kind, row, parent='', *, position, duration, audio=None,
                       subtitle=None, subtitle_size=100, completed=False):
         if kind not in ('vod','episode'):
@@ -137,12 +163,13 @@ class LibraryStore:
             if not math.isfinite(position) or not math.isfinite(duration) or position < 0 or duration <= 0:
                 return
             values = (*entry[:4], 0 if completed else min(position,duration), duration,
-                      clean(audio),clean(subtitle),max(50,min(250,int(subtitle_size))),int(completed),time.time())
+                      clean(audio),clean(subtitle),max(50,min(250,int(subtitle_size))),int(completed),time.time(),entry[4],entry[6])
             with self.db:
-                self.db.execute('''INSERT INTO progress VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                self.db.execute('''INSERT INTO progress(scope,kind,id,parent,position,duration,audio,subtitle,subtitle_size,completed,updated,name,extension)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
                     ON CONFLICT(scope,kind,id,parent) DO UPDATE SET position=excluded.position,
                     duration=excluded.duration,audio=excluded.audio,subtitle=excluded.subtitle,
-                    subtitle_size=excluded.subtitle_size,completed=excluded.completed,updated=excluded.updated''',values)
+                    subtitle_size=excluded.subtitle_size,completed=excluded.completed,updated=excluded.updated,name=excluded.name,extension=excluded.extension''',values)
         except sqlite3.Error:
             raise LibraryError('No se pudo guardar el punto de reproducción.') from None
 

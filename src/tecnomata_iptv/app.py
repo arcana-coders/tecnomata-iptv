@@ -5,7 +5,7 @@ import os
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Qt, QTimer, QSettings
+from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Qt, QTimer, QSettings, QSize
 from PySide6.QtGui import QShortcut, QKeySequence, QFont, QFontDatabase
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
     QHBoxLayout, QLabel, QPushButton, QLineEdit, QComboBox, QListWidget, QGridLayout, QSizePolicy,
@@ -16,11 +16,12 @@ from .player import VideoWidget
 from .catalog import CatalogCache, KINDS
 from .accounts import AccountStore, StorageError
 from .library import LibraryStore, LibraryError, account_scope
+from .collection_row import CollectionRow
 from .progress import track_choice, resolve_track
 from .mpris import MprisBridge
 from .themes import THEMES, stylesheet, illustration
 from .media import describe_video, track_label
-from .widgets import CategoryComboBox, ChosenContentDelegate, CHOSEN_ROLE, FAVORITE_ROLE, HomeTile, DonutBadge, FavoriteList, TimelineSlider
+from .widgets import CategoryComboBox, ChosenContentDelegate, CHOSEN_ROLE, FAVORITE_ROLE, COLLECTION_ROLE, HomeTile, DonutBadge, FavoriteList, TimelineSlider
 
 
 class Signals(QObject):
@@ -664,6 +665,50 @@ class Window(QMainWindow):
             self.status.setText('Pulsa la estrella ☆ de una fila para añadir favoritos.' if view == 'favorites'
                                 else 'Aquí aparecerá el contenido cuando comience a reproducirse.')
 
+    def collection_details(self, row):
+        kind, parent, _ = self.row_source(row)
+        if not self.library or not self.library_scope:
+            return row, None
+        if kind == 'series':
+            result = self.library.latest_episode(self.library_scope,row)
+            return result if result else (row,None)
+        return row, self.library.progress(self.library_scope,kind,row,parent)
+
+    def collection_action(self, row, restart=False):
+        if self.foreground_jobs:
+            return
+        if not self.client and not self.demo:
+            self.show_error('Conecta tu servicio para abrir este contenido.')
+            return
+        # Flush the playing episode before querying a series' latest checkpoint.
+        self.save_progress(force=True)
+        try:
+            target, _ = self.collection_details(row)
+        except LibraryError as exc:
+            self.show_error(str(exc)); return
+        if target.get('_kind') == 'series':
+            self.open_library_row(target)
+            return
+        kind, parent, series_name = self.row_source(target)
+        self.play_content(target,kind,parent,series_name,start_over=restart)
+        # A series card remains chosen when it resumes its episode directly.
+        if row.get('_kind') == 'series':
+            self.choose_content(row)
+
+    def refresh_collection_progress(self):
+        if not self.collection_view:
+            return
+        for index in range(self.items.count()):
+            item = self.items.item(index)
+            widget = self.items.itemWidget(item)
+            if isinstance(widget,CollectionRow):
+                try:
+                    row = item.data(Qt.ItemDataRole.UserRole)
+                    target,saved = self.collection_details(row)
+                    widget.set_progress(saved,target.get('name','') if row.get('_kind') == 'series' and saved else '')
+                except LibraryError:
+                    pass  # Preserve the last displayed checkpoint if storage becomes unavailable.
+
     def open_library_row(self, row):
         if not self.client and not self.demo:
             self.show_error('Conecta tu servicio para abrir este contenido.')
@@ -703,6 +748,7 @@ class Window(QMainWindow):
                 audio=track_choice(self.video.media_info,'audio'), subtitle=track_choice(self.video.media_info,'sub'),
                 subtitle_size=self.sub_size_percent, completed=completed)
             self.last_checkpoint = now
+            self.refresh_collection_progress()
         except LibraryError as exc:
             self.show_error(str(exc))
 
@@ -1118,10 +1164,18 @@ class Window(QMainWindow):
             selected = self.content_id(item.data(Qt.ItemDataRole.UserRole)) == self.content_id(row)
             item.setData(CHOSEN_ROLE, selected)
             item.setToolTip("Contenido elegido" if selected else item.text())
+            widget = self.items.itemWidget(item)
+            if isinstance(widget,CollectionRow):
+                widget.set_chosen(selected)
             if selected:
                 self.items.setCurrentItem(item)
 
     def filter_rows(self):
+        collection = bool(self.collection_view)
+        if self.items.property('collection') != collection:
+            self.items.setProperty('collection',collection)
+            self.items.style().unpolish(self.items)
+            self.items.style().polish(self.items)
         query = self.search.text().casefold().strip()
         self.items.blockSignals(True)
         self.items.clear()
@@ -1146,6 +1200,23 @@ class Window(QMainWindow):
                 item.setData(FAVORITE_ROLE, favorite)
                 item.setToolTip("Contenido elegido" if selected else name)
                 self.items.addItem(item)
+                if self.collection_view:
+                    item.setSizeHint(QSize(250,34))
+                if self.collection_view and source in ('vod','episode','series'):
+                    item.setData(COLLECTION_ROLE,True)
+                    title = label.replace('★ ','').replace('☆ ','')
+                    widget = CollectionRow(title,favorite,source == 'series')
+                    try:
+                        target, saved = self.collection_details(row)
+                        widget.set_progress(saved,target.get('name','') if source == 'series' and saved else '')
+                    except LibraryError as exc:
+                        self.show_error(str(exc))
+                    widget.set_chosen(selected)
+                    widget.star.clicked.connect(lambda checked=False, item=item: self.favorite_clicked(item))
+                    widget.continue_button.clicked.connect(lambda checked=False, row=row: self.collection_action(row))
+                    widget.restart_button.clicked.connect(lambda checked=False, row=row: self.collection_action(row,restart=True))
+                    item.setSizeHint(widget.sizeHint())
+                    self.items.setItemWidget(item,widget)
                 if selected:
                     chosen_item = item
         if chosen_item:
@@ -1182,7 +1253,7 @@ class Window(QMainWindow):
         source, parent, series_name = self.row_source(row)
         self.play_content(row, source, parent, series_name)
 
-    def play_content(self, row, source, parent='', series_name=''):
+    def play_content(self, row, source, parent='', series_name='', start_over=False):
         play_kind = 'series' if source == 'episode' else source
         if self.demo:
             index = int(row.get("stream_id", 1)) - 1
@@ -1206,6 +1277,8 @@ class Window(QMainWindow):
         if self.progress_context:
             try:
                 self.pending_resume = self.library.progress(*self.progress_context)
+                if start_over and self.pending_resume:
+                    self.pending_resume = dict(self.pending_resume, position=0, completed=False)
             except LibraryError as exc:
                 self.progress_blocked = True
                 self.show_error(str(exc))
@@ -1244,6 +1317,13 @@ class Window(QMainWindow):
 
 
 STYLE = """
+QWidget#collectionRow { background: #17263d; border-bottom: 1px solid #314660; }
+QWidget#collectionRow[chosen="true"] { border-left: 3px solid #ffda45; background: #20334f; }
+QWidget#collectionRow QLabel { background: transparent; }
+QLabel#collectionStatus { font-size: 10px; color: #bac8dc; }
+QPushButton#collectionAction { font-size: 11px; padding: 2px 5px; min-height: 18px; }
+QWidget#collectionRow QProgressBar { border: none; background: #314660; border-radius: 2px; }
+QWidget#collectionRow QProgressBar::chunk { background: #ffda45; border-radius: 2px; }
 QWidget#playerControls { background: #17263d; border: 1px solid #314660; border-radius: 12px; }
 QWidget#controlGroup, QWidget#playerControls QLabel { background: transparent; }
 QWidget#playerControls QComboBox { background: #0c0e14; }
@@ -1268,6 +1348,7 @@ QLineEdit:focus, QComboBox:focus { border-color: #00e5ff; }
 QListWidget { background: #17263d; border: none; }
 QListWidget::item { padding: 8px 10px; border-bottom: 1px solid #222838; }
 QListWidget::item:selected { background: #1f344b; }
+QListWidget[collection="true"]::item { padding: 0px; border: none; }
 QLabel#streamInfo { color: #00e5ff; font-size: 12px; font-family: 'JetBrains Mono'; }
 QPushButton#homeLive { background: #0078d7; font-size: 22px; text-align: left; padding: 24px; border: none; }
 QPushButton#homeMovies { background: #d83b01; font-size: 22px; text-align: left; padding: 24px; border: none; }

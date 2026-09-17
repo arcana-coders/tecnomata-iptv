@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (QApplication, QComboBox, QFrame, QVBoxLayout,
 
 CHOSEN_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 FAVORITE_ROLE = CHOSEN_ROLE + 1
+COLLECTION_ROLE = FAVORITE_ROLE + 1
 
 
 class CategoryComboBox(QComboBox):
@@ -119,6 +120,9 @@ class ChosenContentDelegate(QStyledItemDelegate):
             if styled.state & QStyle.StateFlag.State_Selected:
                 painter.fillRect(option.rect, QColor('#484848') if key == 'dog-eyes' else styled.palette.highlight())
             painter.setPen(styled.palette.text().color())
+        if index.data(COLLECTION_ROLE):
+            painter.restore()
+            return  # CollectionRow provides accessible title/progress/buttons.
         styled.font.setBold(chosen)
         painter.setFont(styled.font)
         from PySide6.QtGui import QPainterPath, QPen

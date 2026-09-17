@@ -50,7 +50,7 @@ El ZIP prevalece sobre la regla de esquinas redondeadas de apple-design: Arturo
 solicita explícitamente Metro. Skill usada como criterio de legibilidad/jerarquía,
 no para imponer una estética incompatible. No añadir cifras ficticias de Mbps,
 red/latencia/búfer, avatares, EPG, DVR/grabar nube, VAAPI ni controles decorativos.
-Portadas/fichas, EPG y progreso continúan pendientes; Recientes permite volver a
+Portadas/fichas y EPG continúan pendientes; progreso implementado. Recientes permite volver a
 abrir el contenido, todavía no restaura el minuto de películas/episodios.
 
 ## Archivos y evidencia
@@ -182,3 +182,24 @@ listener -F activo antes del servicio, controles pause/play/volume/stop y cierre
 No se inspecciona ni valida subtítulos del proveedor. Versión nueva probada,
 reproducción real de Arturo se mantiene abierta para no perder posición; activar
 actualización al cerrar/reabrir. Progreso aún pendiente.
+
+## Recientes y favoritos con progreso — 2026-09-16
+
+Películas y episodios de ambas colecciones usan CollectionRow: título/estrella,
+barra, tiempo visto/duración/porcentaje y botones nativos Continuar/Iniciar nuevamente.
+Sin progreso indica Sin iniciar (reinicio habilitado); terminado muestra Visto/100%
+y permite reiniciar. TV conserva fila sencilla. Serie completa favorita muestra
+último episodio y progreso, con Continuar directo a ese episodio; nunca porcentaje
+global de la serie. Sin episodio guardado ofrece Ver episodios.
+
+Iniciar nuevamente recarga la fuente desde cero conservando audio/subtítulos/tamaño,
+sin borrar el punto anterior antes de cargar correctamente. Checkpoints actualizan
+las barras existentes, sin reconstruir lista ni perder foco/scroll. Metadata mínima
+nombre/extensión añadida por migración aditiva a progress y enriquecida desde entries;
+permite recuperar último episodio aunque desaparezca de los recientes100.
+
+66 pruebas PASS y smoke_collection_progress nativo PASS: clics reales de continuar/
+reiniciar, preferencias conservadas y serie favorita abre episodio. Cuatro temas y
+lista estrecha verifican geometría completa; capturas ficticias revisadas.
+No validado aún con proveedor. App real se mantiene abierta sin reinicio;
+cerrar/reabrir activa cambios. Detalle en [progreso](progress.md).

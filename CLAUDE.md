@@ -22,7 +22,7 @@ IPTVnator. `CatalogCache` es por cuenta y sesión: precargar categorías/listas 
 live/vod/series en segundo plano, reutilizar al entrar/cambiar categoría y cachear
 episodios. Actualizar listas/cambiar/olvidar cuenta invalidan el caché.
 No bloquear navegación/reproducción por la precarga. Pruebas GUI de caché/cuenta:
-`QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q` (62 pruebas actualmente).
+`QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q` (66 pruebas actualmente).
 
 Cerrar trabajo actualizando `docs/SESSION.md`, el índice y desarrollo en
 `../asistente/projects/tecnomata-iptv/`, más `../asistente/journal.md`.
@@ -102,3 +102,12 @@ tipo/ID/serie. Guardar antes de reemplazar fuente y cerrar; no guardar durante
 restore/seek sin confirmar ni antes de media_ready. EOF normal marca completo,
 Stop no. smoke_progress usa videos ficticios y SQLite temporal. No reiniciar
 la app vieja mientras Arturo ve su película: no tiene guardado retroactivo.
+
+Colecciones: collection_row.py aporta botones Qt y barra bajo nombre de VOD/
+episodio/serie favorita. COLLECTION_ROLE impide paint duplicado del delegate;
+QListWidget[collection=true] quita padding externo. latest_episode usa metadata
+mínima añadida a progress por ALTER, sobreviviente a recorte de recientes100.
+Continuar serie abre episodio; start_over en play_content conserva pistas y no
+pisa bookmark hasta carga válida. Refresh in-place al checkpoint, no clear.
+Validar con smoke_collection_progress: cuatro temas estrechos, botones sin recorte,
+resume/restart reales. No reiniciar reproducción de Arturo por documentación.
