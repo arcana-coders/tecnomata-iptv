@@ -22,7 +22,7 @@ IPTVnator. `CatalogCache` es por cuenta y sesión: precargar categorías/listas 
 live/vod/series en segundo plano, reutilizar al entrar/cambiar categoría y cachear
 episodios. Actualizar listas/cambiar/olvidar cuenta invalidan el caché.
 No bloquear navegación/reproducción por la precarga. Pruebas GUI de caché/cuenta:
-`QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q` (48 pruebas actualmente).
+`QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q` (51 pruebas actualmente).
 
 Cerrar trabajo actualizando `docs/SESSION.md`, el índice y desarrollo en
 `../asistente/projects/tecnomata-iptv/`, más `../asistente/journal.md`.
@@ -72,3 +72,8 @@ del preview en RAM, éste tiene prioridad. Favoritos/Último tarjetas ocultas si
 vacíos, ocupan fila completa si sólo una. No asignar preview de otro título.
 Lista oculta deja hidden_list_rail / › Lista fuera del video. set_list_visible
 coordina header/icono/rail/tamaños; usarlo desde F4/icono/Ctrl+K, sin cambiar motor.
+
+Temas actuales: themes.py + selector en Inicio, QSettings Tecnomata/IPTV sólo key.
+Demo no persiste. FavoriteList intercepta clics en estrella (38px), delegate usa
+FAVORITE_ROLE; sin botón inferior. Pruebas test_themes_controls con settings
+temporal y videos ficticios; no leer preferencias/biblioteca del usuario.

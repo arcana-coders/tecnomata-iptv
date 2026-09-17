@@ -1,11 +1,12 @@
 """Bounded category overlay and persistent content indication."""
-from PySide6.QtCore import Qt, QEvent, QPoint
+from PySide6.QtCore import Qt, QEvent, QPoint, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (QApplication, QComboBox, QFrame, QVBoxLayout,
     QHBoxLayout, QLabel, QPushButton, QListView, QSizePolicy, QStyledItemDelegate,
-    QStyleOptionViewItem, QStyle, QWidget)
+    QStyleOptionViewItem, QStyle, QWidget, QListWidget)
 
 CHOSEN_ROLE = int(Qt.ItemDataRole.UserRole) + 1
+FAVORITE_ROLE = CHOSEN_ROLE + 1
 
 
 class CategoryComboBox(QComboBox):
@@ -21,7 +22,7 @@ class CategoryComboBox(QComboBox):
         if self.popup is None:
             self.popup = QFrame(self.window())
             self.popup.setObjectName("categoryPopup")
-            self.popup.setStyleSheet("QFrame#categoryPopup { background: #17263d; border: 1px solid #f5cc39; border-radius: 8px; } QPushButton { padding: 6px 10px; }")
+
             layout = QVBoxLayout(self.popup)
             header = QHBoxLayout()
             header.addWidget(QLabel("Categorías"))
@@ -78,22 +79,46 @@ class CategoryComboBox(QComboBox):
         return super().eventFilter(watched, event)
 
 
+class FavoriteList(QListWidget):
+    favorite_clicked = Signal(object)
+
+    def mousePressEvent(self, event):
+        item = self.itemAt(event.position().toPoint())
+        if item and event.button() == Qt.MouseButton.LeftButton and event.position().x() < 38:
+            self.favorite_clicked.emit(item)
+            return
+        super().mousePressEvent(event)
+
+    def mouseDoubleClickEvent(self, event):
+        if event.position().x() < 38:
+            return
+        super().mouseDoubleClickEvent(event)
+
+
 class ChosenContentDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
-        if not index.data(CHOSEN_ROLE):
-            return super().paint(painter, option, index)
         painter.save()
-        painter.fillRect(option.rect, QColor("#f5cc39"))
-        painter.fillRect(option.rect.adjusted(0, 0, -option.rect.width() + 4, 0), QColor("#00e5ff"))
         styled = QStyleOptionViewItem(option)
         self.initStyleOption(styled, index)
-        styled.state &= ~QStyle.StateFlag.State_Selected
-        styled.font.setBold(True)
+        chosen = bool(index.data(CHOSEN_ROLE))
+        from .themes import THEMES
+        key = getattr(self.parent().window(), 'theme_key', 'springfield')
+        accent = QColor(THEMES[key][2])
+        if chosen:
+            painter.fillRect(option.rect, accent)
+            painter.setPen(QColor('#101010'))
+        else:
+            if styled.state & QStyle.StateFlag.State_Selected:
+                painter.fillRect(option.rect, QColor('#484848') if key == 'dog-eyes' else styled.palette.highlight())
+            painter.setPen(styled.palette.text().color())
+        styled.font.setBold(chosen)
         painter.setFont(styled.font)
-        painter.setPen(QColor("#192333"))
-        rect = option.rect.adjusted(12, 0, -10, 0)
-        text = styled.fontMetrics.elidedText("● " + styled.text, Qt.TextElideMode.ElideRight, rect.width())
-        painter.drawText(rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, text)
+        star = '★' if index.data(FAVORITE_ROLE) else '☆'
+        painter.drawText(option.rect.adjusted(9,0,-option.rect.width()+35,0), Qt.AlignmentFlag.AlignCenter, star)
+        text = styled.text.replace('★ ', '').replace('☆ ', '')
+        rect = option.rect.adjusted(40,0,-10,0)
+        painter.drawText(rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+                         styled.fontMetrics.elidedText(text, Qt.TextElideMode.ElideRight, rect.width()))
         painter.restore()
 
 
@@ -102,6 +127,7 @@ class HomeTile(QPushButton):
     def __init__(self, text, color):
         super().__init__(text)
         self.color = QColor(color)
+        self.monochrome = False
         self.preview = None
         self.example = None
         self.preview_title = ''
@@ -128,13 +154,16 @@ class HomeTile(QPushButton):
         painter.fillRect(self.rect(), self.color)
         image = self.preview if self.preview is not None and not self.preview.isNull() else self.example
         if image is not None and not image.isNull():
+            if self.monochrome:
+                from PySide6.QtGui import QImage, QPixmap
+                image = QPixmap.fromImage(image.toImage().convertToFormat(QImage.Format.Format_Grayscale8))
             scaled = image.scaled(self.size(), Qt.AspectRatioMode.KeepAspectRatioByExpanding,
                                          Qt.TransformationMode.SmoothTransformation)
             painter.drawPixmap((self.width()-scaled.width())//2, (self.height()-scaled.height())//2, scaled)
             shade = QLinearGradient(0, 0, 0, self.height())
-            shade.setColorAt(0, QColor(10, 20, 35, 0))
-            shade.setColorAt(.45, QColor(10, 20, 35, 30))
-            shade.setColorAt(1, QColor(10, 20, 35, 240))
+            shade.setColorAt(0, QColor(0, 0, 0, 0) if self.monochrome else QColor(10, 20, 35, 0))
+            shade.setColorAt(.45, QColor(0, 0, 0, 30) if self.monochrome else QColor(10, 20, 35, 30))
+            shade.setColorAt(1, QColor(0, 0, 0, 240) if self.monochrome else QColor(10, 20, 35, 240))
             painter.fillRect(self.rect(), shade)
         font = QFont(self.font())
         font.setPixelSize(20)
@@ -153,7 +182,7 @@ class HomeTile(QPushButton):
         painter.drawText(rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                          '\n'.join(painter.fontMetrics().elidedText(line, Qt.TextElideMode.ElideRight, rect.width()) for line in details.splitlines()))
         if self.hasFocus() or self.underMouse():
-            painter.setPen(QColor('#00e5ff'))
+            painter.setPen(QColor('white') if self.monochrome else QColor('#00e5ff'))
             painter.drawRect(self.rect().adjusted(1, 1, -2, -2))
 
 
@@ -169,6 +198,14 @@ class DonutBadge(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(QPen(QColor('#302335'), 2))
+        theme = getattr(self, 'theme', 'springfield')
+        if theme != 'springfield':
+            from .themes import THEMES
+            painter.setPen(QPen(QColor(THEMES[theme][2]), 2))
+            painter.setBrush(QColor(THEMES[theme][4]))
+            painter.drawRoundedRect(2,2,26,26,6,6)
+            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, {'mcfly':'88','retro':'♫','dog-eyes':'◉'}[theme])
+            return
         painter.setBrush(QColor('#d29a58'))
         painter.drawEllipse(2, 2, 26, 26)
         painter.setBrush(QColor('#ee87ad'))

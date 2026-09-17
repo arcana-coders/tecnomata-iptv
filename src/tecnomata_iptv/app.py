@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Qt, QTimer
+from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Qt, QTimer, QSettings
 from PySide6.QtGui import QShortcut, QKeySequence, QFont, QFontDatabase
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
     QHBoxLayout, QLabel, QPushButton, QLineEdit, QComboBox, QListWidget, QGridLayout, QSizePolicy,
@@ -15,8 +15,9 @@ from .player import VideoWidget
 from .catalog import CatalogCache, KINDS
 from .accounts import AccountStore, StorageError
 from .library import LibraryStore, LibraryError, account_scope
+from .themes import THEMES, stylesheet, illustration
 from .media import describe_video, track_label
-from .widgets import CategoryComboBox, ChosenContentDelegate, CHOSEN_ROLE, HomeTile, DonutBadge
+from .widgets import CategoryComboBox, ChosenContentDelegate, CHOSEN_ROLE, FAVORITE_ROLE, HomeTile, DonutBadge, FavoriteList
 
 
 class Signals(QObject):
@@ -119,7 +120,8 @@ class Window(QMainWindow):
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(8)
         top = QHBoxLayout()
-        top.addWidget(DonutBadge())
+        self.theme_badge = DonutBadge()
+        top.addWidget(self.theme_badge)
         title = QLabel("TECNOMATA IPTV")
         title.setObjectName("brand")
         top.addWidget(title)
@@ -171,6 +173,7 @@ class Window(QMainWindow):
         self.category.addItem("Todas las categorías", None)
         self.category.currentIndexChanged.connect(self.load_catalog)
         self.search = QLineEdit()
+        self.search.setClearButtonEnabled(True)
         self.search.setPlaceholderText("Buscar en esta sección…")
         self.search.textChanged.connect(self.filter_rows)
         self.back = QPushButton("Volver a series")
@@ -184,7 +187,8 @@ class Window(QMainWindow):
         self.refresh_button.setEnabled(False)
         top.addWidget(self.refresh_button)
         self.splitter = QSplitter()
-        self.items = QListWidget()
+        self.items = FavoriteList()
+        self.items.favorite_clicked.connect(self.favorite_clicked)
         self.items.setItemDelegate(ChosenContentDelegate(self.items))
         self.items.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.items.setTextElideMode(Qt.TextElideMode.ElideRight)
@@ -208,9 +212,6 @@ class Window(QMainWindow):
             collections.addWidget(button)
         left.addLayout(collections)
         left.addWidget(self.items, 1)
-        self.favorite_button = QPushButton("☆ Añadir a favoritos")
-        self.favorite_button.clicked.connect(self.toggle_favorite)
-        left.addWidget(self.favorite_button)
         self.items.currentItemChanged.connect(self.sync_favorite)
         self.splitter.addWidget(self.left_panel)
         self.sidebar_sizes = [350, 0, 800]
@@ -248,13 +249,22 @@ class Window(QMainWindow):
         self.live_button.setToolTip("Descarta el búfer y vuelve a conectar al canal. El retraso del proveedor puede persistir.")
         self.live_button.clicked.connect(self.catch_up_live)
         self.live_button.hide()
-        volume = QSlider(Qt.Orientation.Horizontal)
+        volume_group = QWidget()
+        volume_layout = QHBoxLayout(volume_group)
+        volume_layout.setContentsMargins(0, 0, 0, 0)
+        volume_layout.setSpacing(6)
+        volume = self.volume = QSlider(Qt.Orientation.Horizontal)
         volume.setRange(0, 100)
         volume.setValue(65)
         volume.setMaximumWidth(120)
         volume.valueChanged.connect(self.video.set_volume)
-        controls.addWidget(QLabel("Volumen"))
-        controls.addWidget(volume)
+        self.volume_percent = QLabel("65%")
+        self.volume_percent.setFixedWidth(40)
+        volume.valueChanged.connect(lambda value: self.volume_percent.setText(f"{value}%"))
+        volume_layout.addWidget(QLabel("Volumen"))
+        volume_layout.addWidget(volume)
+        volume_layout.addWidget(self.volume_percent)
+        controls.addWidget(volume_group)
         video_layout.addLayout(controls)
         self.quality = QLabel("Sin reproducción")
         self.quality.setObjectName("streamInfo")
@@ -274,8 +284,13 @@ class Window(QMainWindow):
             box.setMaximumWidth(400)
             box.activated.connect(lambda index, box=box, kind=kind:
                                   self.video.select_track(kind, box.itemData(index)))
-            tracks.addWidget(QLabel(label))
-            tracks.addWidget(box, 1)
+            group = QWidget()
+            pair = QHBoxLayout(group)
+            pair.setContentsMargins(0, 0, 0, 0)
+            pair.setSpacing(6)
+            pair.addWidget(QLabel(label))
+            pair.addWidget(box, 1)
+            tracks.addWidget(group, 1)
         video_layout.addLayout(tracks)
         self.video.media_changed.connect(self.update_media)
         self.update_media({})
@@ -303,6 +318,9 @@ class Window(QMainWindow):
         self.diagnostic_timer.start(1000)
         self.section("live")
         self.show_home()
+        saved_theme = 'springfield' if demo else QSettings('Tecnomata', 'IPTV').value('theme', 'springfield')
+        self.theme_selector.setCurrentIndex(max(0, self.theme_selector.findData(saved_theme)))
+        self.change_theme()
         if self.library_error:
             self.account_note.setText(self.library_error)
         self.hide_list_key = QShortcut(QKeySequence("F4"), self)
@@ -319,7 +337,17 @@ class Window(QMainWindow):
         title = QLabel("Tu sofá en Springfield.")
         title.setObjectName("homeTitle")
         title.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-        layout.addWidget(title)
+        self.home_title = title
+        heading = QHBoxLayout()
+        heading.addWidget(title, 1)
+        heading.addWidget(QLabel("Tema"))
+        self.theme_selector = QComboBox()
+        for key, values in THEMES.items():
+            self.theme_selector.addItem(values[0], key)
+        self.theme_selector.setAccessibleName("Tema de la aplicación")
+        self.theme_selector.currentIndexChanged.connect(self.change_theme)
+        heading.addWidget(self.theme_selector)
+        layout.addLayout(heading)
         self.home_note = QLabel("Conecta tu servicio para cargar tu biblioteca.")
         self.home_note.setWordWrap(True)
         self.home_note.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
@@ -477,10 +505,34 @@ class Window(QMainWindow):
             return False
 
     def sync_favorite(self, *_args):
-        item = self.items.currentItem()
-        self.favorite_button.setEnabled(bool(item and self.library and self.library_scope and not self.foreground_jobs))
-        favorite = self.favorite_for(item.data(Qt.ItemDataRole.UserRole)) if item else False
-        self.favorite_button.setText("★ Quitar de favoritos" if favorite else "☆ Añadir a favoritos")
+        self.items.viewport().update()
+
+    def favorite_clicked(self, item):
+        if self.foreground_jobs:
+            return
+        self.items.setCurrentItem(item)
+        self.toggle_favorite()
+
+    def change_theme(self, *_args):
+        key = self.theme_selector.currentData()
+        self.theme_key = key
+        self.setStyleSheet(stylesheet(STYLE, key))
+        self.theme_badge.theme = key
+        self.theme_badge.update()
+        self.home_title.setText(THEMES[key][1])
+        for kind, tile in self.home_tiles.items():
+            tile.monochrome = key == 'dog-eyes'
+            if key == 'springfield':
+                from PySide6.QtGui import QPixmap
+                stem = {'live':'tv','vod':'movies','series':'series'}[kind]
+                tile.set_example(QPixmap(str(Path(__file__).parent / f'assets/backgrounds/springfield-{stem}.png')))
+            else:
+                tile.set_example(illustration(key, kind))
+        for tile in (self.home_favorites, self.home_recent):
+            tile.monochrome = key == 'dog-eyes'
+        self.update_home()
+        if not self.demo:
+            QSettings('Tecnomata', 'IPTV').setValue('theme', key)
 
     def toggle_favorite(self):
         item = self.items.currentItem()
@@ -518,7 +570,7 @@ class Window(QMainWindow):
         self.sync_busy()
         self.set_rows(self.library_rows(view))
         if not self.rows:
-            self.status.setText('Selecciona contenido y pulsa ☆ Añadir a favoritos.' if view == 'favorites'
+            self.status.setText('Pulsa la estrella ☆ de una fila para añadir favoritos.' if view == 'favorites'
                                 else 'Aquí aparecerá el contenido cuando comience a reproducirse.')
 
     def open_library_row(self, row):
@@ -847,7 +899,7 @@ class Window(QMainWindow):
             if query in name.casefold():
                 source, parent, series_name = self.row_source(row)
                 favorite = (source, str(row.get("series_id") if source == "series" else row.get("stream_id")), str(parent)) in favorites
-                label = ('★ ' if favorite else '') + name
+                label = ('★ ' if favorite else '☆ ') + name
                 if self.collection_view:
                     prefix = {'live':'TV', 'vod':'PELÍCULA', 'series':'SERIE', 'episode':'EPISODIO'}[source]
                     if source == 'episode' and series_name:
@@ -857,6 +909,7 @@ class Window(QMainWindow):
                 item.setData(Qt.ItemDataRole.UserRole, row)
                 selected = self.chosen.get(self.content_context()) == self.content_id(row)
                 item.setData(CHOSEN_ROLE, selected)
+                item.setData(FAVORITE_ROLE, favorite)
                 item.setToolTip("Contenido elegido" if selected else name)
                 self.items.addItem(item)
                 if selected:
@@ -941,6 +994,7 @@ class Window(QMainWindow):
 STYLE = """
 QWidget { background: #111d30; color: #e2e7f0; font-size: 14px; }
 QLabel#brand { color: #ffda45; font-size: 18px; font-weight: bold; }
+QFrame#categoryPopup { background: #17263d; border: 1px solid #ffda45; border-radius: 8px; }
 QWidget#sidebar { background: #17263d; border: 1px solid #314660; border-radius: 12px; }
 QLabel#listHeading { color: #e2e7f0; font-weight: bold; padding: 4px; }
 QPushButton { background: #20334f; border: 1px solid #3b536e; border-radius: 8px; padding: 7px 10px; min-height: 16px; }

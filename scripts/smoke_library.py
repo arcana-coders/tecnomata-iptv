@@ -62,6 +62,13 @@ def check():
 def finish():
     try:
         window.grab().save(str(root / 'runtime/metro-home.png'))
+        engine = id(window.video.engine)
+        source = window.video.pending_url
+        for key in ('mcfly', 'retro', 'dog-eyes', 'springfield'):
+            window.theme_selector.setCurrentIndex(window.theme_selector.findData(key))
+            app.processEvents()
+            assert id(window.video.engine) == engine and window.video.pending_url == source
+            window.grab().save(str(root / f'runtime/theme-{key}.png'))
         window.close()
         reopened = LibraryStore(path)
         assert len(reopened.rows('demo', 'favorites')) == 2

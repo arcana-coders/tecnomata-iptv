@@ -183,3 +183,23 @@ oculta rail y restaura tamaños. No overlay sobre QOpenGLWidget ni nuevo motor.
 Header Inicio/Ver marca estado, icono lista sólo en player; dona propia Qt no
 requiere fuente emoji. F4/icono/rail/Ctrl+K convergen en set_list_visible.
 48 pruebas y smoke_library real comprueban condiciones, restauración y assets.
+
+## Temas y controles por fila — 2026-09-16
+
+Selector Tema en Inicio: Springfield (actual), Mcfly (reloj, acero, fuego y 1985),
+Retro 80s / 90s (casete/neón) y Dog Eyes (blanco y negro). QSettings guarda sólo
+el identificador, en configuración local Tecnomata/IPTV; demo no persiste.
+`themes.py` produce las ilustraciones originales Qt de los tres temas nuevos y
+paletas. No necesita red; Springfield conserva sus PNG. Dog Eyes convierte
+miniaturas a gris sin modificar reproducción. Cuadro actual tiene prioridad.
+
+Volumen agrupa etiqueta/barra/porcentaje 0–100; audio y subtítulos agrupan etiqueta
+y selector. Buscador usa X nativa de QLineEdit. FavoriteList intercepta clic izquierdo
+en primeros 38 px y evita dobleclic de estrella: ☆/★ por FAVORITE_ROLE, mantiene
+identidad/biblioteca/cuenta; se elimina botón inferior. Nombre conserva activación
+normal. ChosenContentDelegate pinta estrella y elección usando paleta del tema.
+
+51 pruebas pasan: temas/fondos distintos, fuente conservada, clic estrella sin
+playback, búsqueda, porcentaje y restauración con QSettings temporal. Smoke
+Wayland de biblioteca/video cambia cuatro temas con mismo motor/fuente; capturas
+sintéticas revisadas. Validación visual del proveedor por Arturo pendiente.

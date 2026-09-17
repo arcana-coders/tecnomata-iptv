@@ -130,3 +130,7 @@ Arturo para canales y cambios, películas y series. Los cambios de caché/cuenta
 tienen pruebas propias y se validan en la versión nueva desde el formulario.
 
 Cadena: archivo → repo → documento temático → índice del proyecto → asistente.
+
+Temas desde Inicio: Springfield, Mcfly, Retro 80s / 90s y Dog Eyes; elección
+recordada localmente. Favoritos ☆/★ por fila y X en búsqueda; volumen con porcentaje
+y pistas agrupadas. Ver [diseño](docs/design.md) y [reanudación](docs/SESSION.md).
