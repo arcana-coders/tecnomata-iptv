@@ -9,6 +9,8 @@ class VideoWidget(QOpenGLWidget):
     failed = Signal(str)
     state_changed = Signal(str)
     media_changed = Signal(object)
+    clicked = Signal()
+    position_changed = Signal(object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -110,6 +112,9 @@ class VideoWidget(QOpenGLWidget):
             return
         try:
             position = self.engine.time_pos
+            duration = self.engine.duration
+            self.position_changed.emit({'position': position or 0, 'duration': duration or 0,
+                                        'seekable': bool(self.engine.seekable)})
             if position is not None:
                 state = "paused" if self.engine.pause else "playing"
                 if self.diagnostic["state"] != state:
@@ -122,6 +127,25 @@ class VideoWidget(QOpenGLWidget):
         self.media_ready = False
         self.media_info = {}
         self.media_changed.emit({})
+        self.position_changed.emit({})
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
+
+    def seek_to(self, seconds):
+        if not self.engine or not self.pending_url or not self.media_ready:
+            return False
+        try:
+            duration = self.engine.duration or 0
+            if not self.engine.seekable or duration <= 0:
+                return False
+            self.engine.command('seek', max(0, min(float(seconds), duration)), 'absolute+exact')
+            return True
+        except Exception:
+            self.failed.emit('No se pudo cambiar la posición de reproducción.')
+            return False
 
     def read_media(self):
         if not self.media_ready:

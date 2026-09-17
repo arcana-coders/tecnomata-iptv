@@ -1,9 +1,9 @@
 """Bounded category overlay and persistent content indication."""
-from PySide6.QtCore import Qt, QEvent, QPoint, Signal
+from PySide6.QtCore import Qt, QEvent, QPoint, Signal, QRectF
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (QApplication, QComboBox, QFrame, QVBoxLayout,
     QHBoxLayout, QLabel, QPushButton, QListView, QSizePolicy, QStyledItemDelegate,
-    QStyleOptionViewItem, QStyle, QWidget, QListWidget)
+    QStyleOptionViewItem, QStyle, QWidget, QListWidget, QSlider)
 
 CHOSEN_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 FAVORITE_ROLE = CHOSEN_ROLE + 1
@@ -82,6 +82,14 @@ class CategoryComboBox(QComboBox):
 class FavoriteList(QListWidget):
     favorite_clicked = Signal(object)
 
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMouseTracking(True)
+
+    def mouseMoveEvent(self, event):
+        self.viewport().setCursor(Qt.CursorShape.PointingHandCursor if event.position().x() < 38 else Qt.CursorShape.ArrowCursor)
+        super().mouseMoveEvent(event)
+
     def mousePressEvent(self, event):
         item = self.itemAt(event.position().toPoint())
         if item and event.button() == Qt.MouseButton.LeftButton and event.position().x() < 38:
@@ -113,8 +121,28 @@ class ChosenContentDelegate(QStyledItemDelegate):
             painter.setPen(styled.palette.text().color())
         styled.font.setBold(chosen)
         painter.setFont(styled.font)
-        star = '★' if index.data(FAVORITE_ROLE) else '☆'
-        painter.drawText(option.rect.adjusted(9,0,-option.rect.width()+35,0), Qt.AlignmentFlag.AlignCenter, star)
+        from PySide6.QtGui import QPainterPath, QPen
+        from math import sin, cos, pi
+        favorite = bool(index.data(FAVORITE_ROLE))
+        button = QRectF(option.rect.x()+5, option.rect.center().y()-14, 30, 28)
+        painter.setRenderHint(painter.RenderHint.Antialiasing)
+        painter.setPen(QPen(accent if favorite else QColor('#8292a5') if key != 'dog-eyes' else QColor('#b0b0b0'), 1))
+        painter.setBrush(QColor('#101010') if chosen else accent if favorite else QColor(THEMES[key][4]))
+        painter.drawRoundedRect(button, 7, 7)
+        path = QPainterPath()
+        center = button.center()
+        for n in range(10):
+            radius = 9 if n % 2 == 0 else 4
+            angle = -pi/2 + n*pi/5
+            x, y = center.x()+cos(angle)*radius, center.y()+sin(angle)*radius
+            if n == 0: path.moveTo(x,y)
+            else: path.lineTo(x,y)
+        path.closeSubpath()
+        star_color = accent if chosen else QColor('#101010') if favorite else QColor('white')
+        painter.setPen(QPen(star_color, 1.4))
+        painter.setBrush(star_color if favorite else Qt.BrushStyle.NoBrush)
+        painter.drawPath(path)
+        painter.setPen(QColor('#101010') if chosen else styled.palette.text().color())
         text = styled.text.replace('★ ', '').replace('☆ ', '')
         rect = option.rect.adjusted(40,0,-10,0)
         painter.drawText(rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
@@ -215,3 +243,19 @@ class DonutBadge(QWidget):
         for color, x, y in (('#ffda45', 7, 8), ('#7ac9e9', 20, 7), ('#ffda45', 19, 21), ('#91dbab', 6, 20)):
             painter.setPen(QPen(QColor(color), 2))
             painter.drawLine(x, y, x+3, y+1)
+
+
+class TimelineSlider(QSlider):
+    committed = Signal(int)
+
+    def keyReleaseEvent(self, event):
+        super().keyReleaseEvent(event)
+        if self.isEnabled():
+            self.committed.emit(self.value())
+
+    def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(event)
+        if event.button() == Qt.MouseButton.LeftButton and self.isEnabled():
+            value = round(max(0, min(1, event.position().x()/max(1,self.width()))) * self.maximum())
+            self.setValue(value)
+            self.committed.emit(value)

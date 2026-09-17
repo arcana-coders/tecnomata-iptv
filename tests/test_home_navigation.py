@@ -28,7 +28,7 @@ def test_reveal_tab_restores_list_without_changing_video_or_selection():
     window.items.setCurrentRow(1)
     video_id = id(window.video)
     window.video.pending_url = 'synthetic.ts'
-    window.toggle_list()
+    window.hide_list_button.click()
     assert window.left_panel.isHidden()
     assert not window.hidden_list_rail.isHidden()
     assert not window.list_button.isChecked()

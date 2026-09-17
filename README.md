@@ -134,3 +134,7 @@ Cadena: archivo → repo → documento temático → índice del proyecto → as
 Temas desde Inicio: Springfield, Mcfly, Retro 80s / 90s y Dog Eyes; elección
 recordada localmente. Favoritos ☆/★ por fila y X en búsqueda; volumen con porcentaje
 y pistas agrupadas. Ver [diseño](docs/design.md) y [reanudación](docs/SESSION.md).
+
+Favoritos con botón de estrella vacía/llena por fila y flecha para ocultar lista.
+Pulsa video en películas/episodios para mostrar tiempo y barra de desplazamiento.
+Doce fondos raster locales, distintos por sección/tema; ver [diseño](docs/design.md).

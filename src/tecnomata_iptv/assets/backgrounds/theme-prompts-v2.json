@@ -1,0 +1,62 @@
+[
+  {
+    "theme": "springfield",
+    "kind": "tv",
+    "prompt": "Create a finished raster background for an IPTV app springfield theme, tv card. Warm polished cel-animated cartoon, bold clean outlines, yellow and pink highlights, lavender and navy environments, visual Springfield couch-cartoon mood without characters. A premium live sports television broadcast studio inspired by the layout of FOX Sports, but with no brand logos or lettering: central glossy curved desk, camera in foreground, huge luminous screens showing football pitch and basketball action, no people. Portrait 2:3 composition with the central subject inside the middle 60 percent so it survives narrower and wider tile cropping, rich tangible detail rather than simple geometric art, light sources visible in scene, lower quarter visually quiet for UI title added separately. No headings, no captions, no watermark, no invented logos; no recognizable actors or characters."
+  },
+  {
+    "theme": "springfield",
+    "kind": "movies",
+    "prompt": "Create a finished raster background for an IPTV app springfield theme, movies card. Warm polished cel-animated cartoon, bold clean outlines, yellow and pink highlights, lavender and navy environments, visual Springfield couch-cartoon mood without characters. A playful cartoon movie theater projector booth, film reels, orange cinema seats seen beyond the window, popcorn and pink frosted donut near glowing projector. Portrait 2:3 composition with the central subject inside the middle 60 percent so it survives narrower and wider tile cropping, rich tangible detail rather than simple geometric art, light sources visible in scene, lower quarter visually quiet for UI title added separately. No headings, no captions, no watermark, no invented logos; no recognizable actors or characters."
+  },
+  {
+    "theme": "springfield",
+    "kind": "series",
+    "prompt": "Create a finished raster background for an IPTV app springfield theme, series card. Warm polished cel-animated cartoon, bold clean outlines, yellow and pink highlights, lavender and navy environments, visual Springfield couch-cartoon mood without characters. A cartoon medieval fantasy-series throne hall with a whimsical dragon coiled behind an iron throne, warm candlelight, pink donut on side table, bold playful outlines. Portrait 2:3 composition with the central subject inside the middle 60 percent so it survives narrower and wider tile cropping, rich tangible detail rather than simple geometric art, light sources visible in scene, lower quarter visually quiet for UI title added separately. No headings, no captions, no watermark, no invented logos; no recognizable actors or characters."
+  },
+  {
+    "theme": "mcfly",
+    "kind": "tv",
+    "prompt": "Create a finished raster background for an IPTV app mcfly theme, tv card. Cinematic Back to the Future time-machine aesthetic, brushed stainless steel, glowing amber segmented displays, cyan electricity, practical tungsten and blue light, 1985 science-fiction nostalgia. A premium live sports television broadcast studio inspired by the layout of FOX Sports, but with no brand logos or lettering: central glossy curved desk, camera in foreground, huge luminous screens showing football pitch and basketball action, no people. Portrait 2:3 composition with the central subject inside the middle 60 percent so it survives narrower and wider tile cropping, rich tangible detail rather than simple geometric art, light sources visible in scene, lower quarter visually quiet for UI title added separately. No headings, no captions, no watermark, no invented logos; no recognizable actors or characters."
+  },
+  {
+    "theme": "mcfly",
+    "kind": "movies",
+    "prompt": "Create a finished raster background for an IPTV app mcfly theme, movies card. Cinematic Back to the Future time-machine aesthetic, brushed stainless steel, glowing amber segmented displays, cyan electricity, practical tungsten and blue light, 1985 science-fiction nostalgia. An intimate close-up of the DeLorean time-machine cockpit from Back to the Future, three stacked amber red and green digital time-circuit panels, bundled wires, stainless dashboard, steering wheel edge, small flux capacitor glowing in background. Portrait 2:3 composition with the central subject inside the middle 60 percent so it survives narrower and wider tile cropping, rich tangible detail rather than simple geometric art, light sources visible in scene, lower quarter visually quiet for UI title added separately. No headings, no captions, no watermark, no invented logos; no recognizable actors or characters."
+  },
+  {
+    "theme": "mcfly",
+    "kind": "series",
+    "prompt": "Create a finished raster background for an IPTV app mcfly theme, series card. Cinematic Back to the Future time-machine aesthetic, brushed stainless steel, glowing amber segmented displays, cyan electricity, practical tungsten and blue light, 1985 science-fiction nostalgia. A dramatic fantasy-series medieval throne hall evocative of House of the Dragon: sculptural dragon silhouette curled behind an iron throne, stone arches, integrated subtle amber time-circuit instruments and blue electric accents. Portrait 2:3 composition with the central subject inside the middle 60 percent so it survives narrower and wider tile cropping, rich tangible detail rather than simple geometric art, light sources visible in scene, lower quarter visually quiet for UI title added separately. No headings, no captions, no watermark, no invented logos; no recognizable actors or characters."
+  },
+  {
+    "theme": "retro",
+    "kind": "tv",
+    "prompt": "Create a finished raster background for an IPTV app retro theme, tv card. Rich cinematic retro 1980s/1990s music-video aesthetic, magenta and teal neon from visible lamps, analog equipment, chrome, VHS grain, cassette-era nostalgia. A premium live sports television broadcast studio inspired by the layout of FOX Sports, but with no brand logos or lettering: central glossy curved desk, camera in foreground, huge luminous screens showing football pitch and basketball action, no people. Portrait 2:3 composition with the central subject inside the middle 60 percent so it survives narrower and wider tile cropping, rich tangible detail rather than simple geometric art, light sources visible in scene, lower quarter visually quiet for UI title added separately. No headings, no captions, no watermark, no invented logos; no recognizable actors or characters."
+  },
+  {
+    "theme": "retro",
+    "kind": "movies",
+    "prompt": "Create a finished raster background for an IPTV app retro theme, movies card. Rich cinematic retro 1980s/1990s music-video aesthetic, magenta and teal neon from visible lamps, analog equipment, chrome, VHS grain, cassette-era nostalgia. A 1989 video rental and music room: VHS tapes, CRT television showing an action-movie car chase, cassette boombox with glowing equalizer and film projector beam. Portrait 2:3 composition with the central subject inside the middle 60 percent so it survives narrower and wider tile cropping, rich tangible detail rather than simple geometric art, light sources visible in scene, lower quarter visually quiet for UI title added separately. No headings, no captions, no watermark, no invented logos; no recognizable actors or characters."
+  },
+  {
+    "theme": "retro",
+    "kind": "series",
+    "prompt": "Create a finished raster background for an IPTV app retro theme, series card. Rich cinematic retro 1980s/1990s music-video aesthetic, magenta and teal neon from visible lamps, analog equipment, chrome, VHS grain, cassette-era nostalgia. A prestige 1990s New Jersey crime-drama scene evocative of The Sopranos: empty Italian diner booth, leather jacket over chair, black sedan through rain-streaked window, tabletop jukebox glowing neon. Portrait 2:3 composition with the central subject inside the middle 60 percent so it survives narrower and wider tile cropping, rich tangible detail rather than simple geometric art, light sources visible in scene, lower quarter visually quiet for UI title added separately. No headings, no captions, no watermark, no invented logos; no recognizable actors or characters."
+  },
+  {
+    "theme": "dog-eyes",
+    "kind": "tv",
+    "prompt": "Create a finished raster background for an IPTV app dog-eyes theme, tv card. Premium strictly monochrome black-and-white photography, deep blacks, luminous silver highlights, textured film grain, dramatic motivated light; absolutely no colored pixels. A premium live sports television broadcast studio inspired by the layout of FOX Sports, but with no brand logos or lettering: central glossy curved desk, camera in foreground, huge luminous screens showing football pitch and basketball action, no people. Portrait 2:3 composition with the central subject inside the middle 60 percent so it survives narrower and wider tile cropping, rich tangible detail rather than simple geometric art, light sources visible in scene, lower quarter visually quiet for UI title added separately. No headings, no captions, no watermark, no invented logos; no recognizable actors or characters."
+  },
+  {
+    "theme": "dog-eyes",
+    "kind": "movies",
+    "prompt": "Create a finished raster background for an IPTV app dog-eyes theme, movies card. Premium strictly monochrome black-and-white photography, deep blacks, luminous silver highlights, textured film grain, dramatic motivated light; absolutely no colored pixels. A noir cinema projector booth with physical film reels, glowing projector lens, movie tickets and black-and-white film on a screen beyond. Portrait 2:3 composition with the central subject inside the middle 60 percent so it survives narrower and wider tile cropping, rich tangible detail rather than simple geometric art, light sources visible in scene, lower quarter visually quiet for UI title added separately. No headings, no captions, no watermark, no invented logos; no recognizable actors or characters."
+  },
+  {
+    "theme": "dog-eyes",
+    "kind": "series",
+    "prompt": "Create a finished raster background for an IPTV app dog-eyes theme, series card. Premium strictly monochrome black-and-white photography, deep blacks, luminous silver highlights, textured film grain, dramatic motivated light; absolutely no colored pixels. A noir New Jersey crime-drama scene evocative of The Sopranos: an empty Italian diner booth, espresso cup, leather coat, black sedan outside in rainy night, no people. Portrait 2:3 composition with the central subject inside the middle 60 percent so it survives narrower and wider tile cropping, rich tangible detail rather than simple geometric art, light sources visible in scene, lower quarter visually quiet for UI title added separately. No headings, no captions, no watermark, no invented logos; no recognizable actors or characters."
+  }
+]

@@ -104,3 +104,29 @@ normal. ChosenContentDelegate pinta estrella y elección usando paleta del tema.
 playback, búsqueda, porcentaje y restauración con QSettings temporal. Smoke
 Wayland de biblioteca/video cambia cuatro temas con mismo motor/fuente; capturas
 sintéticas revisadas. Validación visual del proveedor por Arturo pendiente.
+
+## Botones de biblioteca, desplazamiento VOD y fondos raster — 2026-09-16
+
+Estrella por fila dibujada como botón de 30 × 28 px, borde y estrella vectorial
+vacía/llena: no depende de la fuente para distinguir estados. Favorito relleno
+y mensaje de añadido/quitado. Clic no reproduce; dobleclic estrella bloqueado.
+Encabezado de lista tiene botón ‹ para esconderla; pestaña › Lista restaura.
+
+Clic izquierdo en video de película o episodio alterna una barra debajo de la
+imagen con tiempo actual/duración. Slider acepta clic, arrastre y teclado;
+comando libmpv seek absolute+exact con objetivo limitado a duración. Sólo habilitado
+si fuente activa es vod/series (episodios usan playing_kind series), media lista,
+duración positiva y seekable. No usar pestaña navegada para decidir. Stop/cambio
+reinician barra; TV mantiene Ir al directo. position_changed a 250 ms no reconstruye
+listas de pistas. Sin progreso guardado entre ejecuciones todavía.
+
+Fondos nuevos v2: doce PNG, TV/deportes, cine y series por cada tema.
+Springfield cartoon; Mcfly set deportivo tecnológico, cockpit DeLorean y salón
+de dragones con circuitos; Retro estudio neón, video club y diner de drama criminal;
+Dog Eyes estudio, proyector y diner noir monocromos. Referencias decorativas,
+no son portadas o fotogramas del catálogo ni identifican proveedor/contenido real.
+Generador nativo image_gen; prompts en assets/backgrounds/theme-prompts-v2.json.
+
+53 pruebas y smoke_seek con video nativo ficticio: película y episodio avanzan
+a 12 s y retroceden a 3 s en pausa; Stop limpia barra/fuente. No valida seek
+con proveedor. scripts/smoke_library conserva prueba de biblioteca y cuatro temas.

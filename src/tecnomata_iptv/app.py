@@ -17,7 +17,7 @@ from .accounts import AccountStore, StorageError
 from .library import LibraryStore, LibraryError, account_scope
 from .themes import THEMES, stylesheet, illustration
 from .media import describe_video, track_label
-from .widgets import CategoryComboBox, ChosenContentDelegate, CHOSEN_ROLE, FAVORITE_ROLE, HomeTile, DonutBadge, FavoriteList
+from .widgets import CategoryComboBox, ChosenContentDelegate, CHOSEN_ROLE, FAVORITE_ROLE, HomeTile, DonutBadge, FavoriteList, TimelineSlider
 
 
 class Signals(QObject):
@@ -200,7 +200,15 @@ class Window(QMainWindow):
         left.setSpacing(6)
         self.list_heading = QLabel("■  TV EN VIVO")
         self.list_heading.setObjectName("listHeading")
-        left.addWidget(self.list_heading)
+        list_header = QHBoxLayout()
+        list_header.addWidget(self.list_heading, 1)
+        self.hide_list_button = QPushButton('‹')
+        self.hide_list_button.setFixedWidth(32)
+        self.hide_list_button.setAccessibleName('Ocultar lista')
+        self.hide_list_button.setToolTip('Ocultar lista (F4)')
+        self.hide_list_button.clicked.connect(lambda: self.set_list_visible(False))
+        list_header.addWidget(self.hide_list_button)
+        left.addLayout(list_header)
         left.addWidget(self.navigation)
         left.addLayout(filters)
         collections = QHBoxLayout()
@@ -239,6 +247,23 @@ class Window(QMainWindow):
         self.video.failed.connect(self.show_error)
         self.video.state_changed.connect(self.playback_state)
         video_layout.addWidget(self.video, 1)
+        self.timeline = QWidget()
+        timeline_layout = QHBoxLayout(self.timeline)
+        timeline_layout.setContentsMargins(0, 0, 0, 0)
+        self.elapsed = QLabel('00:00')
+        self.total_time = QLabel('00:00')
+        self.seek_slider = TimelineSlider(Qt.Orientation.Horizontal)
+        self.seek_slider.setRange(0, 1000)
+        self.seek_slider.setAccessibleName('Posición de película o episodio')
+        self.seek_slider.committed.connect(self.seek_fraction)
+        timeline_layout.addWidget(self.elapsed)
+        timeline_layout.addWidget(self.seek_slider, 1)
+        timeline_layout.addWidget(self.total_time)
+        video_layout.addWidget(self.timeline)
+        self.timeline.hide()
+        self.seek_duration = 0
+        self.video.clicked.connect(self.toggle_timeline)
+        self.video.position_changed.connect(self.update_position)
         controls = QHBoxLayout()
         for name, function in [("Pausa / seguir", self.video.toggle_pause),
                                ("Detener", self.stop_playback), ("Pantalla completa", self.fullscreen)]:
@@ -380,14 +405,8 @@ class Window(QMainWindow):
         for row in range(2):
             grid.setRowStretch(row, 1)
         layout.addLayout(grid, 1)
-        from PySide6.QtGui import QPixmap
-        images = Path(__file__).parent / 'assets/backgrounds'
         for kind, tile in self.home_tiles.items():
-            stem = {'live': 'springfield-tv', 'vod': 'springfield-movies', 'series': 'springfield-series'}[kind]
-            candidates = sorted(images.glob(stem + '.*'))
-            if candidates:
-                image = QPixmap(str(candidates[0]))
-                tile.set_example(image if not image.isNull() else None)
+            tile.set_example(illustration('springfield', kind))
         return home
 
     def show_home(self):
@@ -522,12 +541,7 @@ class Window(QMainWindow):
         self.home_title.setText(THEMES[key][1])
         for kind, tile in self.home_tiles.items():
             tile.monochrome = key == 'dog-eyes'
-            if key == 'springfield':
-                from PySide6.QtGui import QPixmap
-                stem = {'live':'tv','vod':'movies','series':'series'}[kind]
-                tile.set_example(QPixmap(str(Path(__file__).parent / f'assets/backgrounds/springfield-{stem}.png')))
-            else:
-                tile.set_example(illustration(key, kind))
+            tile.set_example(illustration(key, kind))
         for tile in (self.home_favorites, self.home_recent):
             tile.monochrome = key == 'dog-eyes'
         self.update_home()
@@ -551,6 +565,7 @@ class Window(QMainWindow):
                     self.items.setCurrentRow(index)
                     break
             self.update_home()
+            self.status.setText('Añadido a favoritos ★' if self.favorite_for(row) else 'Quitado de favoritos ☆')
         except LibraryError as exc:
             self.show_error(str(exc))
 
@@ -586,6 +601,30 @@ class Window(QMainWindow):
             item = QListWidgetItem(row['name'])
             item.setData(Qt.ItemDataRole.UserRole, row)
             self.activate(item)
+
+    def toggle_timeline(self):
+        if self.playing_kind in ('vod', 'series') and self.video.pending_url:
+            self.timeline.setVisible(self.timeline.isHidden())
+
+    def update_position(self, info):
+        def stamp(value):
+            value = max(0, int(value or 0))
+            hours, remainder = divmod(value, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            return f'{hours}:{minutes:02}:{seconds:02}' if hours else f'{minutes:02}:{seconds:02}'
+        self.seek_duration = info.get('duration', 0) or 0
+        self.seek_slider.setEnabled(bool(info.get('seekable') and self.seek_duration > 0 and self.playing_kind in ('vod','series')))
+        self.seek_slider.setToolTip('Arrastra o pulsa para adelantar o retroceder' if self.seek_slider.isEnabled() else 'Este contenido aún no indica duración o no permite desplazamiento')
+        self.elapsed.setText(stamp(info.get('position', 0)))
+        self.total_time.setText(stamp(self.seek_duration))
+        if not self.seek_slider.isSliderDown():
+            self.seek_slider.setValue(round(1000 * info.get('position', 0) / self.seek_duration) if self.seek_duration else 0)
+        if not info:
+            self.timeline.hide()
+
+    def seek_fraction(self, value):
+        if self.playing_kind in ('vod', 'series') and self.seek_slider.isEnabled():
+            self.video.seek_to(self.seek_duration * value / 1000)
 
     def playback_state(self, message):
         self.status.setText(message)
@@ -964,6 +1003,7 @@ class Window(QMainWindow):
                 return
         self.choose_content(row)
         self.now.setText(str(row.get("name", "Reproduciendo")))
+        self.timeline.hide()
         self.playing_kind = play_kind
         self.live_button.setVisible(self.playing_kind == "live")
         self.pending_history = (source, dict(row), parent, series_name)
