@@ -22,7 +22,7 @@ IPTVnator. `CatalogCache` es por cuenta y sesión: precargar categorías/listas 
 live/vod/series en segundo plano, reutilizar al entrar/cambiar categoría y cachear
 episodios. Actualizar listas/cambiar/olvidar cuenta invalidan el caché.
 No bloquear navegación/reproducción por la precarga. Pruebas GUI de caché/cuenta:
-`QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q` (53 pruebas actualmente).
+`QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q` (56 pruebas actualmente).
 
 Cerrar trabajo actualizando `docs/SESSION.md`, el índice y desarrollo en
 `../asistente/projects/tecnomata-iptv/`, más `../asistente/journal.md`.
@@ -88,3 +88,9 @@ Estilo vigente segundo ZIP en docs/design.md: Mcfly cian/ámbar Space Grotesk/Mo
 Retro rojo/ámbar Epilogue/Grotesk/Mono. playerControls concentra consola inferior;
 hide_list_button en rail centrado del margen derecho, ya no encabezado. Fuentes
 privadas y licencias en assets/fonts, smoke_library comprueba geometría real.
+
+Subtítulos: sub_scale y sub_visibility explícita al escoger sid; A−/A+ con
+QSettings subtitleSizePercent, demo no guarda. MPRIS worker dbus-fast, Qt requested
+para operaciones GUI, sin URLs/metadata cruda. Demo no exporta salvo smoke explícito.
+Pruebas nuevas smoke_subtitles y smoke_mpris con pistas/títulos sintéticos;
+no reiniciar reproducción real de Arturo para esta entrega (posición no guardada).

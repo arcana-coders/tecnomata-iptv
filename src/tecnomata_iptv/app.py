@@ -15,6 +15,7 @@ from .player import VideoWidget
 from .catalog import CatalogCache, KINDS
 from .accounts import AccountStore, StorageError
 from .library import LibraryStore, LibraryError, account_scope
+from .mpris import MprisBridge
 from .themes import THEMES, stylesheet, illustration
 from .media import describe_video, track_label
 from .widgets import CategoryComboBox, ChosenContentDelegate, CHOSEN_ROLE, FAVORITE_ROLE, HomeTile, DonutBadge, FavoriteList, TimelineSlider
@@ -80,11 +81,15 @@ class Login(QDialog):
 
 
 class Window(QMainWindow):
-    def __init__(self, demo=False, demo_files=(), restore=True, account_store=None, library_store=None):
+    def __init__(self, demo=False, demo_files=(), restore=True, account_store=None, library_store=None, mpris_enabled=None):
         super().__init__()
         self.setWindowTitle("Tecnomata IPTV")
         self.setObjectName("tecnomata-iptv")
         self.resize(1200, 760)
+        self.mpris = None
+        self.playback_status = "Stopped"
+        self.mpris_track = 0
+        self.position_info = {}
         self.library_error = None
         try:
             self.library = library_store or LibraryStore(':memory:' if demo else None)
@@ -343,11 +348,34 @@ class Window(QMainWindow):
             pair.setSpacing(6)
             track_label_widget = QLabel(label.upper())
             track_label_widget.setObjectName("controlCaption")
-            pair.addWidget(track_label_widget)
+            caption = QHBoxLayout()
+            caption.addWidget(track_label_widget, 1)
+            if kind == 'sub':
+                self.sub_smaller = QPushButton('A−')
+                self.sub_larger = QPushButton('A+')
+                self.sub_size_label = QLabel('100%')
+                for button, delta, tip in ((self.sub_smaller,-10,'Subtítulos más pequeños'), (self.sub_larger,10,'Subtítulos más grandes')):
+                    button.setObjectName('subtitleSize')
+                    button.setFixedSize(28,24)
+                    button.setToolTip(tip)
+                    button.setAccessibleName(tip)
+                    button.clicked.connect(lambda checked=False, delta=delta:self.adjust_subtitle_size(delta))
+                caption.addWidget(self.sub_smaller)
+                caption.addWidget(self.sub_size_label)
+                caption.addWidget(self.sub_larger)
+            pair.addLayout(caption)
             pair.addWidget(box, 1)
             tracks.addWidget(group, 1)
         control_layout.addLayout(tracks)
         self.video.media_changed.connect(self.update_media)
+        self.sub_size_percent = 100
+        if not demo:
+            try:
+                self.sub_size_percent = max(50,min(250,int(QSettings('Tecnomata','IPTV').value('subtitleSizePercent',100))))
+            except (ValueError,TypeError):
+                pass
+        self.video.set_subtitle_scale(self.sub_size_percent/100)
+        self.sub_size_label.setText(f'{self.sub_size_percent}%')
         self.update_media({})
         self.splitter.addWidget(right)
         self.splitter.setSizes([350, 0, 800])
@@ -382,6 +410,12 @@ class Window(QMainWindow):
         self.hide_list_key.activated.connect(self.toggle_list)
         self.search_key = QShortcut(QKeySequence("Ctrl+K"), self)
         self.search_key.activated.connect(self.focus_search)
+        self.volume.valueChanged.connect(lambda _:self.publish_mpris())
+        enable_mpris = mpris_enabled if mpris_enabled is not None else not demo
+        if enable_mpris:
+            self.mpris = MprisBridge(self)
+            self.mpris.requested.connect(self.mpris_request)
+            self.publish_mpris()
         if restore and not self.demo:
             QTimer.singleShot(0, self.restore_account)
 
@@ -637,6 +671,8 @@ class Window(QMainWindow):
             self.timeline.setVisible(self.timeline.isHidden())
 
     def update_position(self, info):
+        self.position_info = dict(info)
+        self.publish_mpris()
         def stamp(value):
             value = max(0, int(value or 0))
             hours, remainder = divmod(value, 3600)
@@ -656,7 +692,38 @@ class Window(QMainWindow):
         if self.playing_kind in ('vod', 'series') and self.seek_slider.isEnabled():
             self.video.seek_to(self.seek_duration * value / 1000)
 
+    def publish_mpris(self):
+        if not self.mpris:
+            return
+        active = bool(self.video.pending_url and self.video.diagnostic.get('state') in ('loading','playing','paused'))
+        self.mpris.publish(title=self.now.text() if active else '', state=self.playback_status if active else 'Stopped',
+            position=self.position_info.get('position',0), duration=self.position_info.get('duration',0),
+            seekable=active and self.playing_kind in ('vod','series') and self.position_info.get('seekable',False) and self.position_info.get('duration',0)>0,
+            volume=self.volume.value()/100, track=self.mpris_track)
+
+    def mpris_request(self, operation, value):
+        if operation == 'raise':
+            self.showNormal(); self.raise_(); self.activateWindow()
+        elif operation == 'stop':
+            self.stop_playback()
+        elif operation == 'volume':
+            self.volume.setValue(round(value*100))
+        elif operation == 'seek' and self.playing_kind in ('vod','series'):
+            self.video.seek_to(value)
+        elif operation in ('toggle','pause','play') and self.video.pending_url and self.video.engine:
+            if operation == 'toggle': self.video.toggle_pause()
+            else: self.video.engine.pause = operation == 'pause'
+
+    def adjust_subtitle_size(self, delta):
+        self.sub_size_percent = max(50,min(250,self.sub_size_percent+delta))
+        self.video.set_subtitle_scale(self.sub_size_percent/100)
+        self.sub_size_label.setText(f'{self.sub_size_percent}%')
+        if not self.demo:
+            QSettings('Tecnomata','IPTV').setValue('subtitleSizePercent',self.sub_size_percent)
+
     def playback_state(self, message):
+        self.playback_status = 'Paused' if message == 'En pausa' else 'Playing' if message == 'Reproduciendo' else 'Stopped'
+        self.publish_mpris()
         self.pause_button.setText('▶ Seguir' if message == 'En pausa' else 'Ⅱ Pausa')
         self.status.setText(message)
         if message == 'Reproduciendo' and self.pending_history:
@@ -684,6 +751,8 @@ class Window(QMainWindow):
             self.video.reconnect_current()
 
     def update_media(self, info):
+        for button in (self.sub_smaller,self.sub_larger):
+            button.setEnabled(bool(info.get("sub")))
         self.quality.setText(describe_video(info))
         for kind, box, selected in (("audio", self.audio_tracks, "aid"),
                                     ("sub", self.subtitle_tracks, "sid")):
@@ -736,6 +805,7 @@ class Window(QMainWindow):
 
     def show_error(self, message):
         self.status.setText(message)
+        self.publish_mpris()
 
     def save_diagnostic(self):
         # Strictly whitelisted engine state: no account, URLs, names or raw logs.
@@ -1038,6 +1108,7 @@ class Window(QMainWindow):
         self.playing_kind = play_kind
         self.live_button.setVisible(self.playing_kind == "live")
         self.pending_history = (source, dict(row), parent, series_name)
+        self.mpris_track += 1
         self.video.play(url)
 
     def fullscreen(self):
@@ -1054,6 +1125,8 @@ class Window(QMainWindow):
             self.status.setText("Espera a que termine la consulta antes de cerrar (máximo 20 segundos por solicitud).")
             event.ignore()
             return
+        if self.mpris:
+            self.mpris.close()
         self.video.dispose()
         if self.client:
             self.client.close()
@@ -1068,6 +1141,7 @@ QWidget#controlGroup, QWidget#playerControls QLabel { background: transparent; }
 QWidget#playerControls QComboBox { background: #0c0e14; }
 QLabel#controlCaption { color: #bac8dc; font-size: 10px; font-weight: bold; }
 QPushButton#primaryPlayback { background: #ffda45; color: #16243a; font-weight: bold; min-width: 90px; }
+QPushButton#subtitleSize { padding: 0px; font-size: 11px; min-height: 0px; }
 QPushButton#transportButton { padding: 0px; font-size: 18px; }
 QSlider::groove:horizontal { height: 4px; background: #314660; border-radius: 2px; }
 QSlider::sub-page:horizontal { background: #ffda45; border-radius: 2px; }

@@ -141,3 +141,7 @@ Doce fondos raster locales, distintos por sección/tema; ver [diseño](docs/desi
 
 Mcfly y Retro toman paleta/tipografía del segundo ZIP. Consola inferior compacta,
 pistas agrupadas y botón de ocultar centrado en el borde de lista. Ver [diseño](docs/design.md).
+
+Subtítulos: A−/A+ con porcentaje y tamaño recordado. MPRIS publica título y estado
+para playerctl/Waybar, con controles de pausa/continuar/detener/volumen. No expone
+URLs del servicio. Ver [arquitectura](docs/architecture.md).

@@ -20,6 +20,7 @@ class VideoWidget(QOpenGLWidget):
         self.pending_url = None
         self.init_error = None
         self.closed = False
+        self.subtitle_scale = 1.0
         self.frames = 0
         self.media_ready = False
         self.media_info = {}
@@ -41,6 +42,7 @@ class VideoWidget(QOpenGLWidget):
                                   log_handler=self.engine_log, loglevel="warn",
                                   input_default_bindings=False, input_vo_keyboard=False,
                                   osd_level=0, osc=False)
+            self.engine.sub_scale = self.subtitle_scale
             self.proc = mpv.MpvGlGetProcAddressFn(
                 lambda _ctx, name: int(self.context().getProcAddress(name)))
             self.renderer = mpv.MpvRenderContext(self.engine, "opengl",
@@ -179,9 +181,19 @@ class VideoWidget(QOpenGLWidget):
             return
         try:
             setattr(self.engine, "aid" if kind == "audio" else "sid", track_id)
+            if kind == "sub":
+                self.engine.sub_visibility = track_id != "no"
             self.read_media()
         except Exception:
             self.failed.emit("No se pudo cambiar la pista. Vuelve a intentar.")
+
+    def set_subtitle_scale(self, value):
+        self.subtitle_scale = max(.5, min(2.5, float(value)))
+        if self.engine:
+            try:
+                self.engine.sub_scale = self.subtitle_scale
+            except Exception:
+                self.failed.emit('No se pudo ajustar el tamaño de los subtítulos.')
 
     def toggle_pause(self):
         if self.engine and self.pending_url:

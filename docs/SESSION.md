@@ -1,5 +1,46 @@
 # Punto de reanudación — 2026-09-16
 
+## Subtítulos ajustables y título en Waybar — 2026-09-16
+
+Arturo observa dos pistas de subtítulos en una película: aparecen tras cambiar
+audio/pista y esperar. Esperar al siguiente evento o datos de la pista es posible;
+no se inspeccionó el archivo del proveedor, por lo que no se atribuye causa concreta.
+No añadir retraso artificial, seek automático ni vincular subtítulos al audio.
+Seleccionar sid ahora hace explícita sub_visibility (no la desactiva cambiar audio).
+
+A−/porcentaje/A+ junto al selector: tamaño 50–250%, pasos de 10; sub_scale en
+libmpv se aplica en el acto y antes de inicializar si aún no hay motor. QSettings
+Tecnomata/IPTV guarda subtitleSizePercent; demo no persiste. No cambiar sid/aid
+al ajustar. Botones habilitados si hay pistas. Control orientado a subtítulos
+de texto (SRT/ASS); gráficos o texto quemado no equivalen a fuente ajustable.
+Manual de referencia: https://mpv.io/manual/stable/#options-sub-scale
+
+La barra retro usa WaybarPlayerLyrics.py → playerctl -a metadata --format
+artist/title/status -F; CAVA lee audio por separado, por eso funcionaba el
+ecualizador sin título. La app no exportaba MPRIS. mpris.py añade servicio DBus
+de sesión org.mpris.MediaPlayer2.tecnomata_iptv.instance<PID>, path estándar.
+Publica sólo título del catálogo, trackid sintético, duración/posición, estado
+y volumen. Identity indica app; artista vacío para que se muestre sólo título.
+Nunca publica xesam:url ni URL del stream, credenciales o metadata cruda MPV.
+PropertiesChanged comunica título/estado. Qt signals llevan pause/play/stop/volume/
+seek/raise del worker DBus al hilo GUI; no accede al motor desde DBus. Métodos
+next/previous/OpenUri no se anuncian como disponibles. Sin bus, playback continúa.
+Demo no exporta salvo mpris_enabled=True explícito en smoke. Servicio cierra
+con ventana; media terminada/error/Stop limpia título. Requiere dbus-fast 5.0.22,
+registrado en pyproject y requirements.lock; no requiere tocar Waybar.
+Referencias: https://specifications.freedesktop.org/mpris/latest/Player_Interface.html
+y https://dbus-fast.readthedocs.io/en/latest/high-level-service/index.html
+
+56 pruebas pasan. smoke_subtitles usa dos audios/dos SRT ficticios: píxeles
+visibles, 150% aumenta ancho >30%, segunda pista tiene primer evento a 5s
+y espera al cambiar en 2s; aparece al avanzar a 6s sin cambiar audio. Captura
+ficticia revisada. smoke_mpris valida título película/episodio con playerctl,
+listener -F activo antes del servicio, controles pause/play/volume/stop y cierre.
+No se inspecciona ni valida subtítulos del proveedor. Versión nueva probada,
+reproducción real de Arturo se mantiene abierta para no perder posición; activar
+actualización al cerrar/reabrir. Progreso aún pendiente.
+
+
 ## Estilo del segundo ZIP y consola inferior — 2026-09-16
 
 Referencia nueva: `stitch_delorean_iptv_player.zip` en raíz, guardado como insumo

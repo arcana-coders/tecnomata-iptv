@@ -62,7 +62,7 @@ TV/películas/series se precargan en RAM; Actualizar listas las renueva.
 QT_QPA_PLATFORM=offscreen .venv/bin/pytest -q
 ```
 
-Actualmente 33 pruebas. Los mocks, nombres y cuentas de los tests son ficticios.
+Actualmente 56 pruebas. Los mocks, nombres y cuentas de los tests son ficticios.
 Las pruebas gráficas requieren sesión Wayland/X11 y videos locales; ver
 [diagnóstico de playback](playback-troubleshooting.md). No subimos videos, RPM,
 capturas ni entornos Python: viven en runtime/.venv, ignorados por Git.
@@ -88,3 +88,7 @@ SQLite no contiene contraseña/servidor/usuario ni URLs. Progreso VOD no impleme
 
 Los tres fondos originales de Inicio vienen empaquetados con la app; no requieren
 descargas ni reproducción. Ver [diseño](design.md).
+
+MPRIS requiere DBus de sesión y dbus-fast (incluido en requirements.lock).
+Actualizar dependencias del venv después del pull. No cambiar Waybar. Preferencia
+de tamaño de subtítulos vive en QSettings local, igual que el tema.
