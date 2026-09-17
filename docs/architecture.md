@@ -229,3 +229,31 @@ Generador nativo image_gen; prompts en assets/backgrounds/theme-prompts-v2.json.
 53 pruebas y smoke_seek con video nativo ficticio: película y episodio avanzan
 a 12 s y retroceden a 3 s en pausa; Stop limpia barra/fuente. No valida seek
 con proveedor. scripts/smoke_library conserva prueba de biblioteca y cuatro temas.
+
+## Estilo del segundo ZIP y consola inferior — 2026-09-16
+
+Referencia nueva: `stitch_delorean_iptv_player.zip` en raíz, guardado como insumo
+original. HTML sólo leído; no se ejecutó ni cargaron sus URLs. Se toman colores,
+fuentes y estilo de Temporal Stream Deck para Mcfly y Auteur Cinema Telemetry
+para Retro, conservando estructura lista/reproductor/Inicio y fondos v2.
+Mcfly: chasis #090b0e/#12151b, cian #00f0ff y ámbar #ffb800, Space Grotesk
+en títulos y Space Mono en lectura/controles; esquinas de 4 px. Retro: obsidiana
+#0c0a09, espresso #171412, rojo #ef4444 y ámbar #f59e0b, Epilogue en títulos,
+Space Grotesk en cuerpo y Space Mono en datos; esquinas de 2 px.
+Springfield mantiene paleta, fuentes e imágenes; Dog Eyes conserva blanco/negro.
+Fuentes oficiales google/fonts incluidas, SIL OFL 1.1 por familia, carga privada
+QFontDatabase; sin instalación global ni red al arrancar.
+
+Controles inferiores en panel común: pausa destacada que pasa a Seguir al pausar,
+detener/pantalla completa compactos con tooltip/nombre accesible, volumen
+alineado con porcentaje, pistas con títulos encima del selector y resolución
+separada. Timeline VOD sigue por clic, info/pistas fuera de video. Ocultar lista
+se mueve del encabezado a carril dentro del margen derecho, centrado con dos
+stretches; › Lista conserva restauración y tamaños. No crea otra lista.
+
+53 pruebas pasan. Smoke seek película/episodio pasa; smoke_library extendido
+comprueba centrado (<2px), mismo motor/fuente y capturas sintéticas de reproductor/
+Inicio por tema. Una ejecución gráfica simultánea terminó exit139 sin traceback;
+dos ejecuciones aisladas posteriores pasaron. Causa no determinada, no atribuida
+al diseño ni dada por corregida. Capturas revisadas; wheel incluye fuentes/licencias.
+Validación de Arturo con proveedor pendiente.

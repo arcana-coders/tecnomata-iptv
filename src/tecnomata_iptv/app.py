@@ -195,20 +195,17 @@ class Window(QMainWindow):
         self.items.itemActivated.connect(self.activate)
         self.left_panel = QWidget()
         self.left_panel.setObjectName("sidebar")
-        left = QVBoxLayout(self.left_panel)
+        sidebar_layout = QHBoxLayout(self.left_panel)
+        sidebar_layout.setContentsMargins(0, 0, 0, 0)
+        sidebar_layout.setSpacing(0)
+        sidebar_content = QWidget()
+        sidebar_layout.addWidget(sidebar_content, 1)
+        left = QVBoxLayout(sidebar_content)
         left.setContentsMargins(8, 8, 8, 8)
         left.setSpacing(6)
         self.list_heading = QLabel("■  TV EN VIVO")
         self.list_heading.setObjectName("listHeading")
-        list_header = QHBoxLayout()
-        list_header.addWidget(self.list_heading, 1)
-        self.hide_list_button = QPushButton('‹')
-        self.hide_list_button.setFixedWidth(32)
-        self.hide_list_button.setAccessibleName('Ocultar lista')
-        self.hide_list_button.setToolTip('Ocultar lista (F4)')
-        self.hide_list_button.clicked.connect(lambda: self.set_list_visible(False))
-        list_header.addWidget(self.hide_list_button)
-        left.addLayout(list_header)
+        left.addWidget(self.list_heading)
         left.addWidget(self.navigation)
         left.addLayout(filters)
         collections = QHBoxLayout()
@@ -220,6 +217,18 @@ class Window(QMainWindow):
             collections.addWidget(button)
         left.addLayout(collections)
         left.addWidget(self.items, 1)
+        hide_rail = QVBoxLayout()
+        hide_rail.setContentsMargins(0, 0, 3, 0)
+        hide_rail.addStretch()
+        self.hide_list_button = QPushButton('‹')
+        self.hide_list_button.setObjectName('sidebarReveal')
+        self.hide_list_button.setFixedSize(30, 72)
+        self.hide_list_button.setAccessibleName('Ocultar lista')
+        self.hide_list_button.setToolTip('Ocultar lista (F4)')
+        self.hide_list_button.clicked.connect(lambda: self.set_list_visible(False))
+        hide_rail.addWidget(self.hide_list_button)
+        hide_rail.addStretch()
+        sidebar_layout.addLayout(hide_rail)
         self.items.currentItemChanged.connect(self.sync_favorite)
         self.splitter.addWidget(self.left_panel)
         self.sidebar_sizes = [350, 0, 800]
@@ -247,7 +256,14 @@ class Window(QMainWindow):
         self.video.failed.connect(self.show_error)
         self.video.state_changed.connect(self.playback_state)
         video_layout.addWidget(self.video, 1)
+        self.player_controls = QWidget()
+        self.player_controls.setObjectName('playerControls')
+        control_layout = QVBoxLayout(self.player_controls)
+        control_layout.setContentsMargins(12, 10, 12, 10)
+        control_layout.setSpacing(8)
+        video_layout.addWidget(self.player_controls)
         self.timeline = QWidget()
+        self.timeline.setObjectName("controlGroup")
         timeline_layout = QHBoxLayout(self.timeline)
         timeline_layout.setContentsMargins(0, 0, 0, 0)
         self.elapsed = QLabel('00:00')
@@ -259,29 +275,40 @@ class Window(QMainWindow):
         timeline_layout.addWidget(self.elapsed)
         timeline_layout.addWidget(self.seek_slider, 1)
         timeline_layout.addWidget(self.total_time)
-        video_layout.addWidget(self.timeline)
+        control_layout.addWidget(self.timeline)
         self.timeline.hide()
         self.seek_duration = 0
         self.video.clicked.connect(self.toggle_timeline)
         self.video.position_changed.connect(self.update_position)
         controls = QHBoxLayout()
-        for name, function in [("Pausa / seguir", self.video.toggle_pause),
-                               ("Detener", self.stop_playback), ("Pantalla completa", self.fullscreen)]:
+        controls.setSpacing(6)
+        self.pause_button = QPushButton('Ⅱ Pausa')
+        self.pause_button.setObjectName('primaryPlayback')
+        self.pause_button.clicked.connect(self.video.toggle_pause)
+        controls.addWidget(self.pause_button)
+        for name, tip, function in [('■', 'Detener', self.stop_playback),
+                                    ('⛶', 'Pantalla completa', self.fullscreen)]:
             button = QPushButton(name)
+            button.setObjectName('transportButton')
+            button.setFixedSize(36, 34)
+            button.setToolTip(tip)
+            button.setAccessibleName(tip)
             button.clicked.connect(function)
             controls.addWidget(button)
+        controls.addStretch(1)
         self.live_button = QPushButton("Ir al directo")
         self.live_button.setToolTip("Descarta el búfer y vuelve a conectar al canal. El retraso del proveedor puede persistir.")
         self.live_button.clicked.connect(self.catch_up_live)
         self.live_button.hide()
         volume_group = QWidget()
+        volume_group.setObjectName("controlGroup")
         volume_layout = QHBoxLayout(volume_group)
         volume_layout.setContentsMargins(0, 0, 0, 0)
         volume_layout.setSpacing(6)
         volume = self.volume = QSlider(Qt.Orientation.Horizontal)
         volume.setRange(0, 100)
         volume.setValue(65)
-        volume.setMaximumWidth(120)
+        volume.setFixedWidth(100)
         volume.valueChanged.connect(self.video.set_volume)
         self.volume_percent = QLabel("65%")
         self.volume_percent.setFixedWidth(40)
@@ -290,7 +317,7 @@ class Window(QMainWindow):
         volume_layout.addWidget(volume)
         volume_layout.addWidget(self.volume_percent)
         controls.addWidget(volume_group)
-        video_layout.addLayout(controls)
+        control_layout.addLayout(controls)
         self.quality = QLabel("Sin reproducción")
         self.quality.setObjectName("streamInfo")
         self.quality.setWordWrap(True)
@@ -298,7 +325,7 @@ class Window(QMainWindow):
         info_row = QHBoxLayout()
         info_row.addWidget(self.quality, 1)
         info_row.addWidget(self.live_button)
-        video_layout.addLayout(info_row)
+        control_layout.addLayout(info_row)
         tracks = QHBoxLayout()
         self.audio_tracks = QComboBox()
         self.subtitle_tracks = QComboBox()
@@ -310,13 +337,16 @@ class Window(QMainWindow):
             box.activated.connect(lambda index, box=box, kind=kind:
                                   self.video.select_track(kind, box.itemData(index)))
             group = QWidget()
-            pair = QHBoxLayout(group)
+            group.setObjectName("controlGroup")
+            pair = QVBoxLayout(group)
             pair.setContentsMargins(0, 0, 0, 0)
             pair.setSpacing(6)
-            pair.addWidget(QLabel(label))
+            track_label_widget = QLabel(label.upper())
+            track_label_widget.setObjectName("controlCaption")
+            pair.addWidget(track_label_widget)
             pair.addWidget(box, 1)
             tracks.addWidget(group, 1)
-        video_layout.addLayout(tracks)
+        control_layout.addLayout(tracks)
         self.video.media_changed.connect(self.update_media)
         self.update_media({})
         self.splitter.addWidget(right)
@@ -627,6 +657,7 @@ class Window(QMainWindow):
             self.video.seek_to(self.seek_duration * value / 1000)
 
     def playback_state(self, message):
+        self.pause_button.setText('▶ Seguir' if message == 'En pausa' else 'Ⅱ Pausa')
         self.status.setText(message)
         if message == 'Reproduciendo' and self.pending_history:
             kind, row, parent, series_name = self.pending_history
@@ -1032,6 +1063,15 @@ class Window(QMainWindow):
 
 
 STYLE = """
+QWidget#playerControls { background: #17263d; border: 1px solid #314660; border-radius: 12px; }
+QWidget#controlGroup, QWidget#playerControls QLabel { background: transparent; }
+QWidget#playerControls QComboBox { background: #0c0e14; }
+QLabel#controlCaption { color: #bac8dc; font-size: 10px; font-weight: bold; }
+QPushButton#primaryPlayback { background: #ffda45; color: #16243a; font-weight: bold; min-width: 90px; }
+QPushButton#transportButton { padding: 0px; font-size: 18px; }
+QSlider::groove:horizontal { height: 4px; background: #314660; border-radius: 2px; }
+QSlider::sub-page:horizontal { background: #ffda45; border-radius: 2px; }
+QSlider::handle:horizontal { background: #e2e7f0; width: 10px; margin: -4px 0px; border-radius: 5px; }
 QWidget { background: #111d30; color: #e2e7f0; font-size: 14px; }
 QLabel#brand { color: #ffda45; font-size: 18px; font-weight: bold; }
 QFrame#categoryPopup { background: #17263d; border: 1px solid #ffda45; border-radius: 8px; }
@@ -1067,8 +1107,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
 
 
 def configure_appearance(app):
-    font_path = Path(__file__).parent / 'assets/fonts/InterVariable.ttf'
-    if font_path.exists():
+    for font_path in (Path(__file__).parent / 'assets/fonts').glob('*.ttf'):
         QFontDatabase.addApplicationFont(str(font_path))
     available = set(QFontDatabase.families())
     family = next((name for name in ("Inter Variable", "Inter", "SF Pro Text", "SF Pro Display", "Adwaita Sans", "Helvetica Neue", "Noto Sans")

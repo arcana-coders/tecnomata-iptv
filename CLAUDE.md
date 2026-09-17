@@ -83,3 +83,8 @@ barra VOD por clic; player.position_changed/seek_to usan duración y seekable.
 Episodios tienen playing_kind series, no episode. Fondos raster v2 de cada sección/
 tema; themes.illustration ahora carga PNG, sin dibujos provisionales. Smoke seek
 con película y episodio ficticios, nunca servicio real.
+
+Estilo vigente segundo ZIP en docs/design.md: Mcfly cian/ámbar Space Grotesk/Mono;
+Retro rojo/ámbar Epilogue/Grotesk/Mono. playerControls concentra consola inferior;
+hide_list_button en rail centrado del margen derecho, ya no encabezado. Fuentes
+privadas y licencias en assets/fonts, smoke_library comprueba geometría real.

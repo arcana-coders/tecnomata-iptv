@@ -138,3 +138,6 @@ y pistas agrupadas. Ver [diseño](docs/design.md) y [reanudación](docs/SESSION.
 Favoritos con botón de estrella vacía/llena por fila y flecha para ocultar lista.
 Pulsa video en películas/episodios para mostrar tiempo y barra de desplazamiento.
 Doce fondos raster locales, distintos por sección/tema; ver [diseño](docs/design.md).
+
+Mcfly y Retro toman paleta/tipografía del segundo ZIP. Consola inferior compacta,
+pistas agrupadas y botón de ocultar centrado en el borde de lista. Ver [diseño](docs/design.md).

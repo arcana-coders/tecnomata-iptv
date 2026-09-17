@@ -69,6 +69,12 @@ def finish():
             app.processEvents()
             assert id(window.video.engine) == engine and window.video.pending_url == source
             window.grab().save(str(root / f'runtime/theme-{key}.png'))
+            window.show_player()
+            app.processEvents()
+            center = window.hide_list_button.mapTo(window.left_panel, window.hide_list_button.rect().center())
+            assert abs(center.y() - window.left_panel.height()/2) < 2
+            window.grab().save(str(root / f'runtime/player-{key}.png'))
+            window.show_home()
         window.close()
         reopened = LibraryStore(path)
         assert len(reopened.rows('demo', 'favorites')) == 2
