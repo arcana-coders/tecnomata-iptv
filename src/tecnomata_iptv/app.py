@@ -1,4 +1,5 @@
 import argparse
+import subprocess
 import sys
 import json
 import os
@@ -463,6 +464,7 @@ class Window(QMainWindow):
         self.theme_selector.currentIndexChanged.connect(self.change_theme)
         heading.addWidget(self.theme_selector)
         heading.addWidget(QLabel(t('language_label')))
+        self.active_language = current_language()
         self.language_selector = QComboBox()
         for code, name in LANGUAGES.items():
             self.language_selector.addItem(name, code)
@@ -470,6 +472,11 @@ class Window(QMainWindow):
         self.language_selector.setCurrentIndex(max(0, self.language_selector.findData(current_language())))
         self.language_selector.currentIndexChanged.connect(self.change_language)
         heading.addWidget(self.language_selector)
+        self.apply_language_button = QPushButton(t('apply_restart'))
+        self.apply_language_button.setToolTip(t('apply_restart_tooltip'))
+        self.apply_language_button.clicked.connect(self.restart_app)
+        self.apply_language_button.hide()
+        heading.addWidget(self.apply_language_button)
         layout.addLayout(heading)
         self.home_note = QLabel(t('home_note_default'))
         self.home_note.setWordWrap(True)
@@ -648,8 +655,18 @@ class Window(QMainWindow):
             QSettings('Tecnomata', 'IPTV').setValue('theme', key)
 
     def change_language(self, *_args):
-        set_language(self.language_selector.currentData())
-        self.home_note.setText(t('restart_to_apply_language'))
+        code = self.language_selector.currentData()
+        set_language(code)
+        changed = code != self.active_language
+        self.apply_language_button.setVisible(changed)
+        if changed:
+            self.home_note.setText(t('restart_to_apply_language'))
+
+    def restart_app(self):
+        if not self.close():
+            return  # closeEvent lo rechazó (hay una consulta en curso); reintentar luego.
+        subprocess.Popen(sys.argv, close_fds=True, start_new_session=True)
+        QApplication.instance().quit()
 
     def toggle_favorite(self):
         item = self.items.currentItem()
