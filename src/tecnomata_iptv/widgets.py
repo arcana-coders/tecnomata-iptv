@@ -4,6 +4,7 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (QApplication, QComboBox, QFrame, QVBoxLayout,
     QHBoxLayout, QLabel, QPushButton, QListView, QSizePolicy, QStyledItemDelegate,
     QStyleOptionViewItem, QStyle, QWidget, QListWidget, QSlider)
+from .i18n import t
 
 CHOSEN_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 FAVORITE_ROLE = CHOSEN_ROLE + 1
@@ -26,8 +27,8 @@ class CategoryComboBox(QComboBox):
 
             layout = QVBoxLayout(self.popup)
             header = QHBoxLayout()
-            header.addWidget(QLabel("Categorías"))
-            self.close_button = QPushButton("Cerrar ×")
+            header.addWidget(QLabel(t('categories_title')))
+            self.close_button = QPushButton(t('categories_close'))
             self.close_button.clicked.connect(self.hidePopup)
             header.addWidget(self.close_button)
             layout.addLayout(header)
@@ -223,7 +224,7 @@ class DonutBadge(QWidget):
     def __init__(self):
         super().__init__()
         self.setFixedSize(30, 30)
-        self.setToolTip('Un sofá, una dona y algo bueno para ver')
+        self.setToolTip(t('donut_tooltip'))
 
     def paintEvent(self, event):
         from PySide6.QtGui import QPainter, QPen

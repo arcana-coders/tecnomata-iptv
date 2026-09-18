@@ -93,7 +93,7 @@ def test_stop_pause_close_and_eof_save_separately(tmp_path):
     window = make_window(tmp_path)
     row = {'stream_id':1,'name':'One'}
     window.play_content(row,'vod'); fake_loaded(window,33)
-    window.playback_state('En pausa')
+    window.playback_state('paused')
     assert window.library.progress('demo','vod',row)['position'] == 33
     window.video.stop = lambda:None
     window.stop_playback()
@@ -101,7 +101,7 @@ def test_stop_pause_close_and_eof_save_separately(tmp_path):
     window.video.engine = None
     window.play_content(row2,'vod'); fake_loaded(window,99)
     window.update_position({'position':99,'duration':100,'seekable':True})
-    window.playback_state('Reproducción terminada')
+    window.playback_state('ended')
     assert window.library.progress('demo','vod',row2)['completed'] == 1
     window.save_progress(force=True)
     assert window.library.progress('demo','vod',row2)['position'] == 0

@@ -1,12 +1,13 @@
 """Display only decoded-stream information, never infer quality from names."""
 from math import isfinite
 from .diagnostics import text_value
+from .i18n import t
 
 
 def describe_video(info):
     width, height = info.get('width'), info.get('height')
     if not width or not height:
-        return 'Resolución no disponible' if info else 'Sin reproducción'
+        return t('resolution_unavailable') if info else t('no_playback')
     quality = 'UHD' if height >= 2160 else 'Full HD' if height >= 1080 else 'HD' if height >= 720 else 'SD'
     parts = [f'{quality} · {width} × {height}']
     if info.get('fps') and isfinite(info['fps']) and info['fps'] > 0:
@@ -21,7 +22,7 @@ def track_label(track):
                  'por': 'Português', 'pt': 'Português', 'fra': 'Français', 'fr': 'Français',
                  'jpn': '日本語', 'ja': '日本語', 'deu': 'Deutsch', 'de': 'Deutsch', 'ita': 'Italiano'}
     lang = text_value(track.get('lang'))
-    parts = [languages.get(lang, lang) if lang else 'Idioma no indicado']
+    parts = [languages.get(lang, lang) if lang else t('language_unspecified')]
     for key in ('title', 'codec'):
         value = text_value(track.get(key))
         if value and value not in parts:

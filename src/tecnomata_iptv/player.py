@@ -1,7 +1,9 @@
 """Render OpenGL de libmpv: no crea ventanas ni procesos mpv externos."""
+import subprocess
 from PySide6.QtCore import Signal, Qt, QTimer
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from .diagnostics import classify_error, failure_message, text_value
+from .i18n import t
 
 
 class VideoWidget(QOpenGLWidget):
@@ -25,10 +27,27 @@ class VideoWidget(QOpenGLWidget):
         self.media_ready = False
         self.media_info = {}
         self.diagnostic = {"state": "idle"}
+        self.screensaver_inhibitor = None
         self.poll = QTimer(self)
         self.poll.timeout.connect(self.poll_state)
         self.poll.start(250)
         self.redraw.connect(self.update, Qt.ConnectionType.QueuedConnection)
+
+    def set_screensaver_inhibited(self, inhibited):
+        # libmpv en modo render-API (embebido en este widget) no trae ventana propia,
+        # así que su inhibición nativa de protector de pantalla no aplica: la hacemos
+        # aquí vía logind, independiente del compositor (Hyprland, GNOME, KDE...).
+        if inhibited and self.screensaver_inhibitor is None:
+            try:
+                self.screensaver_inhibitor = subprocess.Popen(
+                    ["systemd-inhibit", "--what=idle:sleep", "--who=Tecnomata IPTV",
+                     "--why=Reproduciendo contenido", "sleep", "infinity"],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except OSError:
+                self.screensaver_inhibitor = None
+        elif not inhibited and self.screensaver_inhibitor is not None:
+            self.screensaver_inhibitor.terminate()
+            self.screensaver_inhibitor = None
 
     def initializeGL(self):
         if self.closed:
@@ -59,15 +78,17 @@ class VideoWidget(QOpenGLWidget):
                 if reason == "error":
                     self.media_ready = False
                     self.diagnostic["state"] = "error"
+                    self.set_screensaver_inhibited(False)
                     self.failed.emit(failure_message(self.diagnostic))
                 elif reason == "eof":
                     self.diagnostic["state"] = "ended"
-                    self.state_changed.emit("Reproducción terminada")
+                    self.set_screensaver_inhibited(False)
+                    self.state_changed.emit("ended")
             self._ended = ended
             if self.pending_url:
                 self.play(self.pending_url)
         except Exception:
-            self.init_error = "No se pudo iniciar el video integrado. Revisa libmpv y el soporte OpenGL."
+            self.init_error = t('error_opengl')
             self.diagnostic = {"state": "error", "failure": "opengl"}
             self.failed.emit(self.init_error)
 
@@ -89,7 +110,7 @@ class VideoWidget(QOpenGLWidget):
         self.reset_media()
         self.pending_url = url
         self.diagnostic = {"state": "loading"}
-        self.state_changed.emit("Conectando con el video…")
+        self.state_changed.emit("connecting")
         if self.init_error:
             self.failed.emit(self.init_error)
         elif self.engine:
@@ -98,7 +119,7 @@ class VideoWidget(QOpenGLWidget):
                 self.engine.pause = False
             except Exception:
                 self.diagnostic["state"] = "error"
-                self.failed.emit("No se pudo abrir el contenido seleccionado.")
+                self.failed.emit(t('error_open_content'))
 
     def engine_log(self, prefix, level, message):
         # Log text may include a URL with secrets. Keep only whitelisted codes.
@@ -121,7 +142,8 @@ class VideoWidget(QOpenGLWidget):
                 state = "paused" if self.engine.pause else "playing"
                 if self.diagnostic["state"] != state:
                     self.diagnostic["state"] = state
-                    self.state_changed.emit("En pausa" if state == "paused" else "Reproduciendo")
+                    self.set_screensaver_inhibited(state == "playing")
+                    self.state_changed.emit(state)
         except Exception:
             pass
 
@@ -146,7 +168,7 @@ class VideoWidget(QOpenGLWidget):
             self.engine.command('seek', max(0, min(float(seconds), duration)), 'absolute+exact')
             return True
         except Exception:
-            self.failed.emit('No se pudo cambiar la posición de reproducción.')
+            self.failed.emit(t('error_seek'))
             return False
 
     def read_media(self):
@@ -185,7 +207,7 @@ class VideoWidget(QOpenGLWidget):
                 self.engine.sub_visibility = track_id != "no"
             self.read_media()
         except Exception:
-            self.failed.emit("No se pudo cambiar la pista. Vuelve a intentar.")
+            self.failed.emit(t('error_track'))
 
     def set_subtitle_scale(self, value):
         self.subtitle_scale = max(.5, min(2.5, float(value)))
@@ -193,7 +215,7 @@ class VideoWidget(QOpenGLWidget):
             try:
                 self.engine.sub_scale = self.subtitle_scale
             except Exception:
-                self.failed.emit('No se pudo ajustar el tamaño de los subtítulos.')
+                self.failed.emit(t('error_subtitle_size'))
 
     def toggle_pause(self):
         if self.engine and self.pending_url:
@@ -205,18 +227,19 @@ class VideoWidget(QOpenGLWidget):
             return
         self.stop()
         self.play(url)
-        self.state_changed.emit("Volviendo al directo…")
+        self.state_changed.emit("reconnecting")
 
     def stop(self):
         self.reset_media()
         self.pending_url = None
         self.diagnostic = {"state": "idle"}
-        self.state_changed.emit("Reproducción detenida")
+        self.set_screensaver_inhibited(False)
+        self.state_changed.emit("stopped")
         if self.engine:
             try:
                 self.engine.command("stop")
             except Exception:
-                self.failed.emit("No se pudo detener la reproducción.")
+                self.failed.emit(t('error_stop'))
         self.update()
 
     def set_volume(self, value):
@@ -227,6 +250,7 @@ class VideoWidget(QOpenGLWidget):
         if self.closed:
             return
         self.closed = True
+        self.set_screensaver_inhibited(False)
         self.poll.stop()
         self.makeCurrent()
         if self.renderer:

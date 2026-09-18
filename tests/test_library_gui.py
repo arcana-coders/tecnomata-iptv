@@ -17,9 +17,9 @@ def test_favorites_toggle_history_success_and_reopen(tmp_path, monkeypatch):
     window.activate(window.items.item(0))
     assert window.playing_kind == 'live'
     assert window.library_rows('recent') == []  # Double click alone is not successful playback.
-    window.playback_state('Reproduciendo')
+    window.playback_state('playing')
     assert window.library_rows('recent')[0]['name'] == 'Canal de prueba B'
-    window.playback_state('Reproduciendo')
+    window.playback_state('playing')
     assert len(window.library_rows('recent')) == 1
     window.show_home()
     assert 'Canal de prueba B' in window.home_recent.text()
@@ -45,7 +45,7 @@ def test_series_and_episode_favorites_reopen_correct_context():
     window.items.setCurrentRow(0)
     window.toggle_favorite()
     window.activate(window.items.item(0))
-    window.playback_state('Reproduciendo')
+    window.playback_state('playing')
     window.show_collection('recent')
     window.activate(window.items.item(0))
     assert window.collection_view == 'recent'

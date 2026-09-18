@@ -4,6 +4,7 @@ from PySide6.QtCore import Qt, QSize, QRectF
 from PySide6.QtGui import QPainter, QPainterPath, QPen, QColor
 from PySide6.QtWidgets import QWidget, QPushButton, QLabel, QProgressBar, QHBoxLayout, QVBoxLayout, QSizePolicy
 from .themes import THEMES
+from .i18n import t
 
 
 def timestamp(seconds):
@@ -31,7 +32,7 @@ class FavoriteButton(QPushButton):
         self.setCheckable(True); self.setChecked(favorite)
         self.setFixedSize(30,28)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setAccessibleName('Quitar de favoritos' if favorite else 'Añadir a favoritos')
+        self.setAccessibleName(t('remove_from_favorites') if favorite else t('add_to_favorites'))
         self.setToolTip(self.accessibleName())
 
     def paintEvent(self,event):
@@ -67,15 +68,15 @@ class CollectionRow(QWidget):
         header.addWidget(self.star); header.addWidget(self.title,1)
         layout.addLayout(header)
         body = QVBoxLayout(); body.setSpacing(3); body.setContentsMargins(0,0,0,0)
-        self.status = ElidedLabel('Sin iniciar')
+        self.status = ElidedLabel(t('not_started'))
         self.status.setObjectName('collectionStatus')
         self.progress_bar = QProgressBar(); self.progress_bar.setRange(0,1000)
         self.progress_bar.setTextVisible(False); self.progress_bar.setFixedHeight(5)
-        self.progress_bar.setAccessibleName(f'Avance de {title}')
+        self.progress_bar.setAccessibleName(t('progress_of', title=title))
         body.addWidget(self.progress_bar); body.addWidget(self.status)
         actions = QHBoxLayout(); actions.setSpacing(5)
-        self.continue_button = QPushButton('Continuar')
-        self.restart_button = QPushButton('Iniciar nuevamente')
+        self.continue_button = QPushButton(t('continue_button'))
+        self.restart_button = QPushButton(t('restart_button'))
         for button in (self.continue_button,self.restart_button):
             button.setObjectName('collectionAction'); button.setCursor(Qt.CursorShape.PointingHandCursor)
             actions.addWidget(button)
@@ -100,15 +101,15 @@ class CollectionRow(QWidget):
         position = duration if completed else saved['position'] if saved else 0
         value = max(0,min(1000,round(1000*position/duration))) if duration else 0
         self.progress_bar.setValue(value)
-        text = 'Visto · 100%' if completed else f'{timestamp(position)} / {timestamp(duration)} · {value/10:.0f}%' if duration else 'Sin iniciar'
+        text = t('watched_full') if completed else f'{timestamp(position)} / {timestamp(duration)} · {value/10:.0f}%' if duration else t('not_started')
         if episode_name: text = f'{episode_name} · {text}'
         self.status.full_text = text
         self.status.setToolTip(text)
         self.status.setText(self.status.fontMetrics().elidedText(text,Qt.TextElideMode.ElideRight,self.status.width()))
         self.progress_bar.setToolTip(text)
-        self.continue_button.setText('Ver episodios' if self.series and not saved else 'Continuar')
+        self.continue_button.setText(t('view_episodes') if self.series and not saved else t('continue_button'))
         self.continue_button.setEnabled(bool(saved and not completed and position>0) or self.series and not saved)
         self.restart_button.setEnabled(not self.series or bool(saved))
         self.restart_button.setVisible(not self.series or bool(saved))
         self.continue_button.setAccessibleName(f'{self.continue_button.text()}: {self.title.full_text}')
-        self.restart_button.setAccessibleName(f'Iniciar nuevamente: {self.title.full_text}')
+        self.restart_button.setAccessibleName(f'{t("restart_button")}: {self.title.full_text}')

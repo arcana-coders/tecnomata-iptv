@@ -1,6 +1,7 @@
 """Una cuenta propia en Secret Service de Linux. Nunca escribir secretos a disco."""
 import json
 from .xtream import Account
+from .i18n import t
 
 
 class StorageError(Exception):
@@ -32,7 +33,7 @@ class AccountStore:
                 raise ValueError()
             return Account(data["server"], data["username"], data["password"])
         except Exception:
-            raise StorageError("No se pudo leer la cuenta del almacén seguro de Linux. Puedes conectar manualmente.") from None
+            raise StorageError(t('account_load_failed')) from None
 
     def save(self, account):
         try:
@@ -40,7 +41,7 @@ class AccountStore:
                                   "password": account.password})
             self.backend.set_password(self.service, self.identity, payload)
         except Exception:
-            raise StorageError("La conexión funciona, pero no se pudo guardar la cuenta en el almacén seguro de Linux.") from None
+            raise StorageError(t('account_save_failed')) from None
 
     def forget(self):
         try:
@@ -50,4 +51,4 @@ class AccountStore:
             except PasswordDeleteError:
                 pass  # Nothing saved already.
         except Exception:
-            raise StorageError("No se pudo borrar la cuenta del almacén seguro de Linux.") from None
+            raise StorageError(t('account_delete_failed')) from None
