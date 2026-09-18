@@ -1,0 +1,195 @@
+# Generated with flatpak-pip-generator --yaml --checker-data --runtime org.kde.Sdk//6.11 --prefer-wheels cffi,cryptography,dbus-fast -o python3-modules setuptools>=77 wheel python-mpv>=1.0.8,<2 httpx>=0.28,<1 keyring>=25,<26 dbus-fast>=5,<6
+name: python3-modules
+buildsystem: simple
+build-commands: []
+modules:
+  - name: python3-python-mpv
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST} "python-mpv>=1.0.8,<2" --no-build-isolation
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/22/f3/4c632eaacebfc62ab9414586137aecf6c0ea2a1e99708cf5a4c0dec13ae0/python_mpv-1.0.8-py3-none-any.whl
+        sha256: b5296403e990fb7348df4ca2211937a030f524bf638657bda7e45a00bc2df0cd
+        x-checker-data:
+          type: pypi
+          name: python-mpv
+          packagetype: bdist_wheel
+  - name: python3-httpx
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST} "httpx>=0.28,<1" --no-build-isolation
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/12/b8/4bd346e22b28902df4d651910f5242c28d84e4a5c2435ca5c3f797ed7e2e/anyio-4.15.1-py3-none-any.whl
+        sha256: 6152fdbbf9a77fdec97731721bebf7c4c44f7c29b424b0065826173efc7ed101
+        x-checker-data:
+          type: pypi
+          name: anyio
+          packagetype: bdist_wheel
+      - type: file
+        url: https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
+        sha256: 62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775
+        x-checker-data:
+          type: pypi
+          name: certifi
+          packagetype: bdist_wheel
+      - type: file
+        url: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
+        sha256: 63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86
+        x-checker-data:
+          type: pypi
+          name: h11
+          packagetype: bdist_wheel
+      - type: file
+        url: https://files.pythonhosted.org/packages/7e/f5/f66802a942d491edb555dd61e3a9961140fd64c90bce1eafd741609d334d/httpcore-1.0.9-py3-none-any.whl
+        sha256: 2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55
+        x-checker-data:
+          type: pypi
+          name: httpcore
+          packagetype: bdist_wheel
+      - type: file
+        url: https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl
+        sha256: d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad
+        x-checker-data:
+          type: pypi
+          name: httpx
+          packagetype: bdist_wheel
+      - type: file
+        url: https://files.pythonhosted.org/packages/58/a2/bb081bab032533a855d44de1d56f8e8426114ff1ba5d1f07a438a0a654f8/idna-3.20-py3-none-any.whl
+        sha256: ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c
+        x-checker-data:
+          type: pypi
+          name: idna
+          packagetype: bdist_wheel
+      - type: file
+        url: https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl
+        sha256: 481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8
+        x-checker-data:
+          type: pypi
+          name: typing-extensions
+          packagetype: bdist_wheel
+  - name: python3-keyring
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST} "keyring>=25,<26" --no-build-isolation
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/95/95/86342356ff5953b3fb06f7ef7c5bee212d45e770abc7218d451b9148313c/cffi-2.1.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+        sha256: a931079504ecc49efed7744c476a5c343a92fabf66dec2db95edb1b2fdc770e2
+        only-arches:
+          - x86_64
+        x-checker-data:
+          type: pypi
+          name: cffi
+          packagetype: bdist_wheel
+      - type: file
+        url: https://files.pythonhosted.org/packages/37/6f/3b5ce4c3b2192d250f04908f2bfd91ef34552ec8f7716a5d4abdb8d67bb2/cffi-2.1.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.whl
+        sha256: f16c709686a78c727bbbf059f92b0bf41c6fc60deec706d2dc19f529175a6125
+        only-arches:
+          - aarch64
+        x-checker-data:
+          type: pypi
+          name: cffi
+          packagetype: bdist_wheel
+      - type: file
+        url: https://files.pythonhosted.org/packages/57/26/e6d4fc8512a51a5f9ee7bfdbfb853bce1197087df40c9ad993ad370b846f/cryptography-50.0.1-cp311-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+        sha256: ff838d62ec1bfce4f9ba7fa16f4a7b554cd8d0c299e6be37502161a660c84eef
+        only-arches:
+          - x86_64
+        x-checker-data:
+          type: pypi
+          name: cryptography
+          packagetype: bdist_wheel
+      - type: file
+        url: https://files.pythonhosted.org/packages/90/34/9ce9a62ed9dc82ca9fd6a34445b6904af56e5f38b3eae2ed32e49c36053d/cryptography-50.0.1-cp311-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.whl
+        sha256: 53e279950892dc102c6b4e52af03ae5ea92fac572a1ddab78ca73a997f62b69f
+        only-arches:
+          - aarch64
+        x-checker-data:
+          type: pypi
+          name: cryptography
+          packagetype: bdist_wheel
+      - type: file
+        url: https://files.pythonhosted.org/packages/7f/66/b15ce62552d84bbfcec9a4873ab79d993a1dd4edb922cbfccae192bd5b5f/jaraco.classes-3.4.0-py3-none-any.whl
+        sha256: f662826b6bed8cace05e7ff873ce0f9283b5c924470fe664fff1c2f00f581790
+        x-checker-data:
+          type: pypi
+          name: jaraco.classes
+          packagetype: bdist_wheel
+      - type: file
+        url: https://files.pythonhosted.org/packages/f2/58/bc8954bda5fcda97bd7c19be11b85f91973d67a706ed4a3aec33e7de22db/jaraco_context-6.1.2-py3-none-any.whl
+        sha256: bf8150b79a2d5d91ae48629d8b427a8f7ba0e1097dd6202a9059f29a36379535
+        x-checker-data:
+          type: pypi
+          name: jaraco-context
+          packagetype: bdist_wheel
+      - type: file
+        url: https://files.pythonhosted.org/packages/02/36/ecc85bc96c273dc8a11273ed4782272975e6338d4a3e9228621175edf0e3/jaraco_functools-4.6.0-py3-none-any.whl
+        sha256: 99e3dc0060c5cbe8fcd1cdb36258e2a65ca40f1566b2033b12abb1bb44dd3c30
+        x-checker-data:
+          type: pypi
+          name: jaraco-functools
+          packagetype: bdist_wheel
+      - type: file
+        url: https://files.pythonhosted.org/packages/b2/a3/e137168c9c44d18eff0376253da9f1e9234d0239e0ee230d2fee6cea8e55/jeepney-0.9.0-py3-none-any.whl
+        sha256: 97e5714520c16fc0a45695e5365a2e11b81ea79bba796e26f9f1d178cb182683
+        x-checker-data:
+          type: pypi
+          name: jeepney
+          packagetype: bdist_wheel
+      - type: file
+        url: https://files.pythonhosted.org/packages/81/db/e655086b7f3a705df045bf0933bdd9c2f79bb3c97bfef1384598bb79a217/keyring-25.7.0-py3-none-any.whl
+        sha256: be4a0b195f149690c166e850609a477c532ddbfbaed96a404d4e43f8d5e2689f
+        x-checker-data:
+          type: pypi
+          name: keyring
+          packagetype: bdist_wheel
+      - type: file
+        url: https://files.pythonhosted.org/packages/e8/3d/1087453384dbde46a8c7f9356eead2c58be8a7bf156bca40243377c85715/more_itertools-11.1.0-py3-none-any.whl
+        sha256: 4b65538ae22f6fed0ce4874efd317463a7489796a0939fa66824dd542125a192
+        x-checker-data:
+          type: pypi
+          name: more-itertools
+          packagetype: bdist_wheel
+      - type: file
+        url: https://files.pythonhosted.org/packages/0c/c3/44f3fbbfa403ea2a7c779186dc20772604442dde72947e7d01069cbe98e3/pycparser-3.0-py3-none-any.whl
+        sha256: b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992
+        x-checker-data:
+          type: pypi
+          name: pycparser
+          packagetype: bdist_wheel
+      - type: file
+        url: https://files.pythonhosted.org/packages/b7/46/f5af3402b579fd5e11573ce652019a67074317e18c1935cc0b4ba9b35552/secretstorage-3.5.0-py3-none-any.whl
+        sha256: 0ce65888c0725fcb2c5bc0fdb8e5438eece02c523557ea40ce0703c266248137
+        x-checker-data:
+          type: pypi
+          name: secretstorage
+          packagetype: bdist_wheel
+  - name: python3-dbus-fast
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST} "dbus-fast>=5,<6" --no-build-isolation
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/6a/34/6b272e6df60be1aa4d575aa30220175a52c002a649c951d9950bfa3a72d6/dbus_fast-5.0.22-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
+        sha256: 979761985fe343c701f2b7575285d6e370123f7231d4656209ef7824bb686bbb
+        only-arches:
+          - x86_64
+        x-checker-data:
+          type: pypi
+          name: dbus-fast
+          packagetype: bdist_wheel
+      - type: file
+        url: https://files.pythonhosted.org/packages/76/5a/fa81a6685c763ea488ad93228cb6e036adc9af6a560f4c31643691f4cfd8/dbus_fast-5.0.22-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl
+        sha256: de10ff3b3cb2acb1c09fe17158a470519000d37bb5ee5fd69c4075e81ce8dcf5
+        only-arches:
+          - aarch64
+        x-checker-data:
+          type: pypi
+          name: dbus-fast
+          packagetype: bdist_wheel

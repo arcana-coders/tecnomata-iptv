@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.arcana_coders.TecnomataIptv</id>
+  <name>Tecnomata IPTV</name>
+  <summary>Watch live TV, movies and series from your Xtream IPTV service</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="io.github.arcana_coders">
+    <name>Arturo Carrillo</name>
+  </developer>
+  <content_rating type="oars-1.1"/>
+  <description>
+    <p>
+      Tecnomata IPTV is a desktop client for Xtream Codes IPTV services on
+      Linux. Live TV, movies and series play inside a single window, using
+      an embedded video engine instead of spawning a separate player process
+      per channel.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Live TV, movies and series in one window, with a single content list</li>
+      <li>Per-item resume: each movie and episode remembers its own position, audio and subtitle track</li>
+      <li>Favorites and recently played, with progress bars and quick resume</li>
+      <li>Four selectable visual themes</li>
+      <li>"Go live" button to discard buffered delay on a live channel after pausing</li>
+      <li>Desktop integration via MPRIS (title and playback state in your panel/bar)</li>
+      <li>Account credentials stored only in the Linux Secret Service (keyring), never on disk</li>
+    </ul>
+    <p>
+      You need your own Xtream Codes IPTV subscription (server, username and
+      password) to use this app. It does not include, sell or distribute any
+      channels or content.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.arcana_coders.TecnomataIptv.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Home screen with the Springfield theme</caption>
+      <image>https://raw.githubusercontent.com/arcana-coders/tecnomata-iptv/main/docs/screenshots/inicio-springfield.webp</image>
+    </screenshot>
+    <screenshot>
+      <caption>The four selectable themes: Springfield, Mcfly, Retro 80s/90s and Dog Eyes</caption>
+      <image>https://raw.githubusercontent.com/arcana-coders/tecnomata-iptv/main/docs/screenshots/cuatro-temas.webp</image>
+    </screenshot>
+    <screenshot>
+      <caption>Player with audio/subtitle track selection and live info panel</caption>
+      <image>https://raw.githubusercontent.com/arcana-coders/tecnomata-iptv/main/docs/screenshots/reproductor-mcfly.webp</image>
+    </screenshot>
+    <screenshot>
+      <caption>Favorites with resume progress and quick actions</caption>
+      <image>https://raw.githubusercontent.com/arcana-coders/tecnomata-iptv/main/docs/screenshots/continuar-favoritos.webp</image>
+    </screenshot>
+  </screenshots>
+  <url type="homepage">https://github.com/arcana-coders/tecnomata-iptv</url>
+  <url type="bugtracker">https://github.com/arcana-coders/tecnomata-iptv/issues</url>
+  <categories>
+    <category>AudioVideo</category>
+    <category>Player</category>
+  </categories>
+  <keywords>
+    <keyword>IPTV</keyword>
+    <keyword>Xtream</keyword>
+    <keyword>streaming</keyword>
+    <keyword>television</keyword>
+  </keywords>
+  <releases>
+    <release version="0.1.0" date="2026-09-17">
+      <description>
+        <p>First packaged release: live TV/movies/series in one window, per-item resume, favorites, four themes and MPRIS integration.</p>
+      </description>
+    </release>
+  </releases>
+</component>

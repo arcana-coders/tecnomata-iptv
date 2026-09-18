@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Tecnomata IPTV
+GenericName=IPTV Player
+Comment=TV en vivo, películas y series con video integrado
+Exec=io.github.arcana_coders.TecnomataIptv
+Icon=io.github.arcana_coders.TecnomataIptv
+Terminal=false
+Categories=AudioVideo;Player;
+StartupNotify=true
