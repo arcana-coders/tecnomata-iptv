@@ -6,7 +6,7 @@ sdk: org.kde.Sdk
 # never build Qt ourselves. https://github.com/flathub/io.qt.PySide.BaseApp
 base: io.qt.PySide.BaseApp
 base-version: '6.11'
-command: io.github.arcana_coders.TecnomataIptv
+command: tecnomata-iptv
 
 cleanup-commands:
   - /app/cleanup-BaseApp.sh
