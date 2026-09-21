@@ -260,4 +260,4 @@ modules:
     sources:
       - type: git
         url: https://github.com/arcana-coders/tecnomata-iptv.git
-        commit: 47600588c2ccbbc21075045a4ba475e47405b783
+        commit: eb93822691f5acff290552b7203314c2cc47134c
