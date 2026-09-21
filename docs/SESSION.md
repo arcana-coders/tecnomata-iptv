@@ -9,6 +9,7 @@ Arturo solicita portar a la versión nativa de Linux las listas personalizadas y
 3. **Galería de carátulas**: `CoverGridView` con descarga asíncrona a disco (`~/.cache/tecnomata-iptv/covers/`), limitador de concurrencia a 4 hilos, registro de URLs fallidas (evita bucles 404), caché LRU en memoria (400 pósters) y estricto aislamiento de hilos (hilo de red descarga a archivo, carga a QPixmap sólo en hilo GUI).
 4. **Ficha flotante con botón**: Modal `ContentDetailDialog` con póster, calificación, año, duración, género, director, reparto, sinopsis, barra de progreso y botones de acción (`▶ Reproducir`/`Continuar`, `↺ Desde el inicio`, `Ver episodios`, `★ / ☆ Favorito`).
 5. **Empaquetado e instalación Flatpak**: Manifiesto actualizado con commit pinneado, subido a GitHub y Gitea, compilado e instalado localmente en Fedora vía `org.flatpak.Builder`. 88 pruebas automatizadas pasando al 100%.
+6. **Preparación Flathub**: Versión `0.2.0`, tag `v0.2.0`, manifiesto validado con `flatpak-builder-lint` (0 errores). Fork `arcana-coders/flathub` y rama `io.github.arcana_coders.TecnomataIptv` listos. Repositorio auxiliar `arcana-coders/tecnomataiptv` creado para validación de URL de Flathub. Requisitos pendientes para abrir PR: video screencast demostrativo grabado por Arturo y apertura manual del PR sin agentes IA.
 
 ## Contraste de selección — 2026-09-16
 
