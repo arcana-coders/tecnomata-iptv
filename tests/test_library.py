@@ -60,3 +60,69 @@ def test_old_favorites_are_not_pruned_and_bad_ids_are_rejected():
     with pytest.raises(LibraryError):
         store.toggle('a', 'vod', {'stream_id': 'https://invalid', 'name': 'bad'})
     store.close()
+
+
+def test_custom_lists_create_rename_membership_and_delete_are_scoped():
+    store = LibraryStore(':memory:')
+    channel_a = {'stream_id': 1, 'name': 'HBO'}
+    channel_b = {'stream_id': 2, 'name': 'HBO 2'}
+    list_id = store.create_list('a', ' Deportes ')
+    assert store.lists('a') == [{'list_id': list_id, 'name': 'Deportes', 'count': 0}]
+    assert store.lists('b') == []
+    store.set_list_membership('a', list_id, 'live', channel_a)
+    store.set_list_membership('a', list_id, 'live', channel_b)
+    assert store.lists('a')[0]['count'] == 2
+    assert store.list_membership('a', 'live', channel_a) == {list_id}
+    names = {row['name'] for row in store.list_rows('a', list_id)}
+    assert names == {'HBO', 'HBO 2'}
+    assert store.list_rows('b', list_id) == []
+    store.set_list_membership('a', list_id, 'live', channel_a, member=False)
+    assert len(store.list_rows('a', list_id)) == 1
+    store.rename_list('a', list_id, 'Deportes MX')
+    assert store.lists('a')[0]['name'] == 'Deportes MX'
+    assert store.list_by_name('a', 'Deportes MX') == list_id
+    with pytest.raises(LibraryError):
+        store.create_list('a', '   ')
+    store.delete_list('a', list_id)
+    assert store.lists('a') == []
+    assert store.list_rows('a', list_id) == []
+    store.close()
+
+
+def test_replace_list_members_regenerates_exact_contents():
+    store = LibraryStore(':memory:')
+    list_id = store.create_list('a', 'hbo · HD')
+    channel_a = {'stream_id': 1, 'name': 'HBO'}
+    channel_b = {'stream_id': 2, 'name': 'HBO 2'}
+    store.replace_list_members('a', list_id, [('live', channel_a, '')])
+    assert {row['name'] for row in store.list_rows('a', list_id)} == {'HBO'}
+    store.replace_list_members('a', list_id, [('live', channel_b, '')])
+    assert {row['name'] for row in store.list_rows('a', list_id)} == {'HBO 2'}
+    store.close()
+
+
+def test_membership_and_quality_maps_batch_lookups_for_the_visible_list():
+    store = LibraryStore(':memory:')
+    channel_a = {'stream_id': 1, 'name': 'HBO'}
+    channel_b = {'stream_id': 2, 'name': 'HBO 2'}
+    list_id = store.create_list('a', 'HBO HD')
+    store.set_list_membership('a', list_id, 'live', channel_a)
+    store.save_quality('a', 'live', channel_a, 'hd', 1280, 720)
+    assert store.list_membership_map('a', 'live') == {'1': {list_id}}
+    assert store.list_membership_map('b', 'live') == {}
+    assert store.quality_map('a', 'live') == {'1': 'hd'}
+    store.save_quality('a', 'live', channel_b, None, None, None)
+    assert store.quality_map('a', 'live') == {'1': 'hd'}  # None tiers stay out of the map.
+    store.close()
+
+
+def test_quality_is_scoped_and_overwritten_on_rescan():
+    store = LibraryStore(':memory:')
+    channel = {'stream_id': 1, 'name': 'HBO'}
+    assert store.quality_of('a', 'live', channel) is None
+    store.save_quality('a', 'live', channel, 'hd', 1280, 720)
+    assert store.quality_of('a', 'live', channel) == 'hd'
+    assert store.quality_of('b', 'live', channel) is None
+    store.save_quality('a', 'live', channel, 'fullhd', 1920, 1080)
+    assert store.quality_of('a', 'live', channel) == 'fullhd'
+    store.close()

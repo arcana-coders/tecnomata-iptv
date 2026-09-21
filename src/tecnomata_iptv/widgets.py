@@ -9,6 +9,9 @@ from .i18n import t
 CHOSEN_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 FAVORITE_ROLE = CHOSEN_ROLE + 1
 COLLECTION_ROLE = FAVORITE_ROLE + 1
+LIVE_ROLE = COLLECTION_ROLE + 1
+IN_LIST_ROLE = LIVE_ROLE + 1
+LIST_BUTTON_X = (40, 70)
 
 
 class CategoryComboBox(QComboBox):
@@ -83,24 +86,36 @@ class CategoryComboBox(QComboBox):
 
 class FavoriteList(QListWidget):
     favorite_clicked = Signal(object)
+    list_button_clicked = Signal(object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMouseTracking(True)
 
     def mouseMoveEvent(self, event):
-        self.viewport().setCursor(Qt.CursorShape.PointingHandCursor if event.position().x() < 38 else Qt.CursorShape.ArrowCursor)
+        x = event.position().x()
+        item = self.itemAt(event.position().toPoint())
+        live = bool(item and item.data(LIVE_ROLE))
+        hot = x < 38 or (live and LIST_BUTTON_X[0] <= x < LIST_BUTTON_X[1])
+        self.viewport().setCursor(Qt.CursorShape.PointingHandCursor if hot else Qt.CursorShape.ArrowCursor)
         super().mouseMoveEvent(event)
 
     def mousePressEvent(self, event):
         item = self.itemAt(event.position().toPoint())
-        if item and event.button() == Qt.MouseButton.LeftButton and event.position().x() < 38:
-            self.favorite_clicked.emit(item)
-            return
+        x = event.position().x()
+        if item and event.button() == Qt.MouseButton.LeftButton:
+            if x < 38:
+                self.favorite_clicked.emit(item)
+                return
+            if item.data(LIVE_ROLE) and LIST_BUTTON_X[0] <= x < LIST_BUTTON_X[1]:
+                self.list_button_clicked.emit(item)
+                return
         super().mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event):
-        if event.position().x() < 38:
+        item = self.itemAt(event.position().toPoint())
+        x = event.position().x()
+        if x < 38 or (item and item.data(LIVE_ROLE) and LIST_BUTTON_X[0] <= x < LIST_BUTTON_X[1]):
             return
         super().mouseDoubleClickEvent(event)
 
@@ -147,9 +162,20 @@ class ChosenContentDelegate(QStyledItemDelegate):
         painter.setPen(QPen(star_color, 1.4))
         painter.setBrush(star_color if favorite else Qt.BrushStyle.NoBrush)
         painter.drawPath(path)
+        live = bool(index.data(LIVE_ROLE))
+        text_start = 40
+        if live:
+            in_list = bool(index.data(IN_LIST_ROLE))
+            list_button = QRectF(option.rect.x()+LIST_BUTTON_X[0], option.rect.center().y()-13, 26, 26)
+            painter.setPen(QPen(accent if in_list else QColor('#8292a5') if key != 'dog-eyes' else QColor('#b0b0b0'), 1))
+            painter.setBrush(accent if in_list else QColor('#101010') if chosen else QColor(THEMES[key][4]))
+            painter.drawRoundedRect(list_button, 6, 6)
+            painter.setPen(QPen(QColor('#101010') if in_list else star_color, 1.6))
+            painter.drawText(list_button, Qt.AlignmentFlag.AlignCenter, '≡')
+            text_start = LIST_BUTTON_X[1] + 5
         painter.setPen(QColor('#101010') if chosen else styled.palette.text().color())
         text = styled.text.replace('★ ', '').replace('☆ ', '')
-        rect = option.rect.adjusted(40,0,-10,0)
+        rect = option.rect.adjusted(text_start,0,-10,0)
         painter.drawText(rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
                          styled.fontMetrics.elidedText(text, Qt.TextElideMode.ElideRight, rect.width()))
         painter.restore()

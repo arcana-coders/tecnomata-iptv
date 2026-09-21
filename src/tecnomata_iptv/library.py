@@ -4,6 +4,7 @@ import json
 import math
 import os
 import sqlite3
+import uuid
 from pathlib import Path
 import time
 
@@ -43,6 +44,17 @@ class LibraryStore:
                 position REAL NOT NULL, duration REAL NOT NULL, audio TEXT, subtitle TEXT,
                 subtitle_size INTEGER NOT NULL, completed INTEGER NOT NULL DEFAULT 0,
                 updated REAL NOT NULL, PRIMARY KEY(scope,kind,id,parent))''')
+            self.db.execute('''CREATE TABLE IF NOT EXISTS lists (
+                scope TEXT NOT NULL, list_id TEXT NOT NULL, name TEXT NOT NULL,
+                created REAL NOT NULL, PRIMARY KEY (scope, list_id))''')
+            self.db.execute('''CREATE TABLE IF NOT EXISTS list_members (
+                scope TEXT NOT NULL, list_id TEXT NOT NULL, kind TEXT NOT NULL, id TEXT NOT NULL,
+                parent TEXT NOT NULL DEFAULT '',
+                PRIMARY KEY (scope, list_id, kind, id, parent))''')
+            self.db.execute('''CREATE TABLE IF NOT EXISTS quality (
+                scope TEXT NOT NULL, kind TEXT NOT NULL, id TEXT NOT NULL,
+                tier TEXT, width INTEGER, height INTEGER, scanned REAL NOT NULL,
+                PRIMARY KEY (scope, kind, id))''')
             columns = {column['name'] for column in self.db.execute('PRAGMA table_info(progress)')}
             for name in ('name','extension'):
                 if name not in columns:
@@ -103,19 +115,160 @@ class LibraryStore:
         except sqlite3.Error:
             raise LibraryError('No se pudo guardar el historial.') from None
 
+    def _row_dict(self, item):
+        return {
+            ('series_id' if item['kind'] == 'series' else 'stream_id'): item['id'],
+            'name': item['name'],
+            'category_id': item['category'],
+            'container_extension': item['extension'] or None,
+            '_kind': item['kind'],
+            '_parent': item['parent'],
+            '_series_name': item['series_name'],
+            '_played': item['played'] if 'played' in item.keys() else None,
+        }
+
     def rows(self, scope, view):
         try:
             if view == 'favorites':
                 entries = self.db.execute('SELECT * FROM entries WHERE scope=? AND favorite=1 ORDER BY name COLLATE NOCASE', (scope,)).fetchall()
             else:
                 entries = self.db.execute('SELECT * FROM entries WHERE scope=? AND played IS NOT NULL ORDER BY played DESC LIMIT 100', (scope,)).fetchall()
-            return [{('series_id' if item['kind'] == 'series' else 'stream_id'): item['id'],
-                'name': item['name'], 'category_id': item['category'],
-                'container_extension': item['extension'] or None,
-                '_kind': item['kind'], '_parent': item['parent'],
-                '_series_name': item['series_name'], '_played': item['played']} for item in entries]
+            return [self._row_dict(item) for item in entries]
         except sqlite3.Error:
             raise LibraryError('No se pudo leer la biblioteca local.') from None
+
+    def create_list(self, scope, name):
+        name = str(name).strip()
+        if not name:
+            raise LibraryError('El nombre de la lista no puede estar vacío.')
+        list_id = uuid.uuid4().hex
+        try:
+            with self.db:
+                self.db.execute('INSERT INTO lists(scope,list_id,name,created) VALUES (?,?,?,?)',
+                    (scope, list_id, name, time.time()))
+            return list_id
+        except sqlite3.Error:
+            raise LibraryError('No se pudo crear la lista.') from None
+
+    def rename_list(self, scope, list_id, name):
+        name = str(name).strip()
+        if not name:
+            raise LibraryError('El nombre de la lista no puede estar vacío.')
+        try:
+            with self.db:
+                self.db.execute('UPDATE lists SET name=? WHERE scope=? AND list_id=?', (name, scope, list_id))
+        except sqlite3.Error:
+            raise LibraryError('No se pudo renombrar la lista.') from None
+
+    def delete_list(self, scope, list_id):
+        try:
+            with self.db:
+                self.db.execute('DELETE FROM list_members WHERE scope=? AND list_id=?', (scope, list_id))
+                self.db.execute('DELETE FROM lists WHERE scope=? AND list_id=?', (scope, list_id))
+        except sqlite3.Error:
+            raise LibraryError('No se pudo eliminar la lista.') from None
+
+    def lists(self, scope):
+        try:
+            entries = self.db.execute('''SELECT lists.list_id AS list_id, lists.name AS name,
+                COUNT(list_members.id) AS count FROM lists LEFT JOIN list_members
+                ON lists.scope=list_members.scope AND lists.list_id=list_members.list_id
+                WHERE lists.scope=? GROUP BY lists.list_id ORDER BY lists.name COLLATE NOCASE''', (scope,)).fetchall()
+            return [{'list_id': item['list_id'], 'name': item['name'], 'count': item['count']} for item in entries]
+        except sqlite3.Error:
+            raise LibraryError('No se pudieron leer las listas.') from None
+
+    def list_by_name(self, scope, name):
+        try:
+            item = self.db.execute('SELECT list_id FROM lists WHERE scope=? AND name=?', (scope, name)).fetchone()
+            return item['list_id'] if item else None
+        except sqlite3.Error:
+            raise LibraryError('No se pudo buscar la lista.') from None
+
+    def list_membership(self, scope, kind, row, parent=''):
+        entry = self._entry(scope, kind, row, parent)
+        try:
+            entries = self.db.execute('SELECT list_id FROM list_members WHERE scope=? AND kind=? AND id=? AND parent=?', entry[:4]).fetchall()
+            return {item['list_id'] for item in entries}
+        except sqlite3.Error:
+            raise LibraryError('No se pudo leer la pertenencia a listas.') from None
+
+    def set_list_membership(self, scope, list_id, kind, row, parent='', member=True, series_name=''):
+        entry = self._entry(scope, kind, row, parent, series_name)
+        try:
+            with self.db:
+                self._upsert(entry)
+                if member:
+                    self.db.execute('''INSERT OR IGNORE INTO list_members(scope,list_id,kind,id,parent)
+                        VALUES (?,?,?,?,?)''', (scope, list_id, entry[1], entry[2], entry[3]))
+                else:
+                    self.db.execute('''DELETE FROM list_members WHERE scope=? AND list_id=?
+                        AND kind=? AND id=? AND parent=?''', (scope, list_id, entry[1], entry[2], entry[3]))
+        except sqlite3.Error:
+            raise LibraryError('No se pudo actualizar la lista.') from None
+
+    def replace_list_members(self, scope, list_id, members):
+        """members: iterable of (kind, row, parent) that becomes the exact list contents."""
+        try:
+            with self.db:
+                self.db.execute('DELETE FROM list_members WHERE scope=? AND list_id=?', (scope, list_id))
+                for kind, row, parent in members:
+                    entry = self._entry(scope, kind, row, parent)
+                    self._upsert(entry)
+                    self.db.execute('''INSERT OR IGNORE INTO list_members(scope,list_id,kind,id,parent)
+                        VALUES (?,?,?,?,?)''', (scope, list_id, entry[1], entry[2], entry[3]))
+        except sqlite3.Error:
+            raise LibraryError('No se pudo actualizar la lista generada.') from None
+
+    def list_rows(self, scope, list_id):
+        try:
+            entries = self.db.execute('''SELECT entries.* FROM entries JOIN list_members
+                ON entries.scope=list_members.scope AND entries.kind=list_members.kind
+                AND entries.id=list_members.id AND entries.parent=list_members.parent
+                WHERE entries.scope=? AND list_members.list_id=?
+                ORDER BY entries.name COLLATE NOCASE''', (scope, list_id)).fetchall()
+            return [self._row_dict(item) for item in entries]
+        except sqlite3.Error:
+            raise LibraryError('No se pudo leer la lista.') from None
+
+    def list_membership_map(self, scope, kind):
+        """One query for the whole visible list, instead of one per row on every keystroke."""
+        try:
+            entries = self.db.execute('SELECT id, list_id FROM list_members WHERE scope=? AND kind=?', (scope, kind)).fetchall()
+            result = {}
+            for item in entries:
+                result.setdefault(item['id'], set()).add(item['list_id'])
+            return result
+        except sqlite3.Error:
+            raise LibraryError('No se pudo leer la pertenencia a listas.') from None
+
+    def quality_map(self, scope, kind):
+        try:
+            entries = self.db.execute('SELECT id, tier FROM quality WHERE scope=? AND kind=?', (scope, kind)).fetchall()
+            return {item['id']: item['tier'] for item in entries if item['tier']}
+        except sqlite3.Error:
+            raise LibraryError('No se pudo leer la calidad.') from None
+
+    def save_quality(self, scope, kind, row, tier, width=None, height=None):
+        entry = self._entry(scope, kind, row)
+        try:
+            with self.db:
+                self._upsert(entry)
+                self.db.execute('''INSERT INTO quality(scope,kind,id,tier,width,height,scanned)
+                    VALUES (?,?,?,?,?,?,?) ON CONFLICT(scope,kind,id) DO UPDATE SET
+                    tier=excluded.tier,width=excluded.width,height=excluded.height,scanned=excluded.scanned''',
+                    (scope, entry[1], entry[2], tier, width, height, time.time()))
+        except sqlite3.Error:
+            raise LibraryError('No se pudo guardar la calidad detectada.') from None
+
+    def quality_of(self, scope, kind, row):
+        entry = self._entry(scope, kind, row)
+        try:
+            item = self.db.execute('SELECT tier FROM quality WHERE scope=? AND kind=? AND id=?',
+                (scope, entry[1], entry[2])).fetchone()
+            return item['tier'] if item else None
+        except sqlite3.Error:
+            raise LibraryError('No se pudo leer la calidad.') from None
 
     def progress(self, scope, kind, row, parent=''):
         if kind not in ('vod','episode'):

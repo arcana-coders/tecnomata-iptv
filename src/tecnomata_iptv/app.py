@@ -10,7 +10,7 @@ from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Qt, QTimer, 
 from PySide6.QtGui import QShortcut, QKeySequence, QFont, QFontDatabase
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
     QHBoxLayout, QLabel, QPushButton, QLineEdit, QComboBox, QListWidget, QGridLayout, QSizePolicy,
-    QListWidgetItem, QSplitter, QSlider, QDialog, QFormLayout, QDialogButtonBox, QCheckBox)
+    QListWidgetItem, QSplitter, QSlider, QDialog, QFormLayout, QDialogButtonBox, QCheckBox, QStackedWidget)
 
 from .xtream import Account, XtreamClient, ServiceError
 from .player import VideoWidget
@@ -22,7 +22,11 @@ from .progress import track_choice, resolve_track
 from .mpris import MprisBridge
 from .themes import THEMES, stylesheet, illustration
 from .media import describe_video, track_label
-from .widgets import CategoryComboBox, ChosenContentDelegate, CHOSEN_ROLE, FAVORITE_ROLE, COLLECTION_ROLE, HomeTile, DonutBadge, FavoriteList, TimelineSlider
+from .widgets import (CategoryComboBox, ChosenContentDelegate, CHOSEN_ROLE, FAVORITE_ROLE, COLLECTION_ROLE,
+                      LIVE_ROLE, IN_LIST_ROLE, LIST_BUTTON_X, HomeTile, DonutBadge, FavoriteList, TimelineSlider)
+from .quality import probe_stream, TIERS
+from .covers import CoverCache
+from .details import CoverGridView, ContentDetailDialog
 from .i18n import t, LANGUAGES, current_language, set_language
 
 
@@ -85,6 +89,102 @@ class Login(QDialog):
             self.error.setText(str(exc) if isinstance(exc, ServiceError) else t('error_invalid_server'))
 
 
+class ListNameDialog(QDialog):
+    def __init__(self, parent, title, initial=''):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setMinimumWidth(320)
+        form = QFormLayout(self)
+        self.name_edit = QLineEdit(initial)
+        form.addRow(t('list_name_label'), self.name_edit)
+        self.error = QLabel()
+        self.error.setWordWrap(True)
+        form.addRow(self.error)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.validate)
+        buttons.rejected.connect(self.reject)
+        form.addRow(buttons)
+
+    def validate(self):
+        if not self.name_edit.text().strip():
+            self.error.setText(t('list_name_label'))
+            return
+        self.accept()
+
+
+class ConfirmDialog(QDialog):
+    def __init__(self, parent, title, text, confirm_label):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setMinimumWidth(320)
+        layout = QVBoxLayout(self)
+        label = QLabel(text)
+        label.setWordWrap(True)
+        layout.addWidget(label)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
+        confirm = buttons.addButton(confirm_label, QDialogButtonBox.ButtonRole.DestructiveRole)
+        confirm.clicked.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+
+class ListMembershipDialog(QDialog):
+    """Checkbox per existing list plus an inline field to create and add at once."""
+    def __init__(self, parent, lists, membership, on_toggle, on_create, channel_name):
+        super().__init__(parent)
+        self.setWindowTitle(t('list_membership_dialog_title', name=channel_name))
+        self.setMinimumWidth(320)
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel(t('list_membership_intro')))
+        self.checks_layout = QVBoxLayout()
+        layout.addLayout(self.checks_layout)
+        self.empty_label = QLabel(t('list_membership_empty'))
+        layout.addWidget(self.empty_label)
+        self.checks = {}
+        self.on_toggle = on_toggle
+        for item in lists:
+            self.add_row(item['list_id'], item['name'], item['list_id'] in membership)
+        new_row = QHBoxLayout()
+        self.new_name = QLineEdit()
+        self.new_name.setPlaceholderText(t('list_membership_new_placeholder'))
+        self.create_button = QPushButton(t('list_membership_new_button'))
+        self.create_button.clicked.connect(lambda: self._create(on_create))
+        new_row.addWidget(self.new_name, 1)
+        new_row.addWidget(self.create_button)
+        layout.addLayout(new_row)
+        self.error = QLabel()
+        self.error.setWordWrap(True)
+        layout.addWidget(self.error)
+        done_button = QPushButton(t('list_membership_close'))
+        done_button.clicked.connect(self.accept)
+        layout.addWidget(done_button)
+        self._sync_empty()
+
+    def add_row(self, list_id, name, checked):
+        box = QCheckBox(name)
+        box.setChecked(checked)
+        box.toggled.connect(lambda state, list_id=list_id: self.on_toggle(list_id, state))
+        self.checks_layout.addWidget(box)
+        self.checks[list_id] = box
+        self._sync_empty()
+
+    def _sync_empty(self):
+        self.empty_label.setVisible(not self.checks)
+
+    def _create(self, on_create):
+        name = self.new_name.text().strip()
+        if not name:
+            return
+        try:
+            list_id = on_create(name)
+        except LibraryError as exc:
+            self.error.setText(str(exc))
+            return
+        self.new_name.clear()
+        self.error.clear()
+        self.add_row(list_id, name, True)
+
+
 class Window(QMainWindow):
     def __init__(self, demo=False, demo_files=(), restore=True, account_store=None, library_store=None, mpris_enabled=None):
         super().__init__()
@@ -108,10 +208,19 @@ class Window(QMainWindow):
         self.pending_resume = None
         self.resume_target = None
         self.progress_blocked = False
+        self.visible_rows = []
+        self.list_names = {}
+        self.scan_active = False
+        self.scan_cancel_requested = False
+        self.scan_queue = []
+        self.scan_total = 0
+        self.scan_tally = {'sd': [], 'hd': [], 'fullhd': [], 'unknown': 0}
+        self.scan_context_label = ''
         self.restoring_progress = False
         self.last_checkpoint = 0
         self.progress_snapshot = None
         self.current_series_name = ''
+        self.cover_cache = CoverCache()
         self.client = None
         self.cache = None
         self.account_store = account_store or AccountStore()
@@ -206,6 +315,7 @@ class Window(QMainWindow):
         self.splitter = QSplitter()
         self.items = FavoriteList()
         self.items.favorite_clicked.connect(self.favorite_clicked)
+        self.items.list_button_clicked.connect(self.open_list_membership)
         self.items.setItemDelegate(ChosenContentDelegate(self.items))
         self.items.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.items.setTextElideMode(Qt.TextElideMode.ElideRight)
@@ -220,6 +330,12 @@ class Window(QMainWindow):
         left = QVBoxLayout(sidebar_content)
         left.setContentsMargins(8, 8, 8, 8)
         left.setSpacing(6)
+        self.scan_button = QPushButton(t('scan_quality_button'))
+        self.scan_button.setToolTip(t('scan_quality_tooltip'))
+        self.scan_button.clicked.connect(self.toggle_quality_scan)
+        self.scan_button.setEnabled(False)
+        self.scan_button.hide()
+        left.addWidget(self.scan_button)
         self.list_heading = QLabel(t('heading_live'))
         self.list_heading.setObjectName("listHeading")
         left.addWidget(self.list_heading)
@@ -233,6 +349,26 @@ class Window(QMainWindow):
             button.clicked.connect(lambda checked=False, view=view: self.show_collection(view))
             collections.addWidget(button)
         left.addLayout(collections)
+        lists_row = QHBoxLayout()
+        self.lists_combo = QComboBox()
+        self.lists_combo.addItem(t('lists_combo_placeholder'), None)
+        self.lists_combo.currentIndexChanged.connect(self.choose_list)
+        self.new_list_button = QPushButton(t('new_list_button'))
+        self.new_list_button.setToolTip(t('new_list_tooltip'))
+        self.new_list_button.clicked.connect(self.create_list_dialog)
+        self.rename_list_button = QPushButton(t('rename_list_button'))
+        self.rename_list_button.setToolTip(t('rename_list_tooltip'))
+        self.rename_list_button.setEnabled(False)
+        self.rename_list_button.clicked.connect(self.rename_list_dialog)
+        self.delete_list_button = QPushButton(t('delete_list_button'))
+        self.delete_list_button.setToolTip(t('delete_list_tooltip'))
+        self.delete_list_button.setEnabled(False)
+        self.delete_list_button.clicked.connect(self.delete_list_dialog)
+        lists_row.addWidget(self.lists_combo, 1)
+        lists_row.addWidget(self.new_list_button)
+        lists_row.addWidget(self.rename_list_button)
+        lists_row.addWidget(self.delete_list_button)
+        left.addLayout(lists_row)
         left.addWidget(self.items, 1)
         hide_rail = QVBoxLayout()
         hide_rail.setContentsMargins(0, 0, 3, 0)
@@ -263,8 +399,8 @@ class Window(QMainWindow):
         rail.addStretch()
         self.splitter.addWidget(self.hidden_list_rail)
         self.hidden_list_rail.hide()
-        right = QWidget()
-        video_layout = QVBoxLayout(right)
+        self.player_container = QWidget()
+        video_layout = QVBoxLayout(self.player_container)
         video_layout.setContentsMargins(8, 0, 0, 0)
         self.now = QLabel(t('select_content_prompt'))
         self.now.setWordWrap(True)
@@ -315,6 +451,11 @@ class Window(QMainWindow):
             button.setAccessibleName(tip)
             button.clicked.connect(function)
             controls.addWidget(button)
+        self.to_covers_button = QPushButton(t('to_covers_button'))
+        self.to_covers_button.setToolTip(t('to_covers_tooltip'))
+        self.to_covers_button.clicked.connect(self.show_covers_view)
+        self.to_covers_button.hide()
+        controls.addWidget(self.to_covers_button)
         controls.addStretch(1)
         self.live_button = QPushButton(t('catch_up_live'))
         self.live_button.setToolTip(t('catch_up_live_tooltip'))
@@ -392,7 +533,32 @@ class Window(QMainWindow):
         self.video.set_subtitle_scale(self.sub_size_percent/100)
         self.sub_size_label.setText(f'{self.sub_size_percent}%')
         self.update_media({})
-        self.splitter.addWidget(right)
+        self.covers_container = QWidget()
+        covers_layout = QVBoxLayout(self.covers_container)
+        covers_layout.setContentsMargins(8, 0, 0, 0)
+        covers_layout.setSpacing(8)
+
+        covers_header = QHBoxLayout()
+        covers_header.setSpacing(10)
+        self.covers_header_label = QLabel(t('covers_header_all'))
+        self.covers_header_label.setObjectName("listHeading")
+        covers_header.addWidget(self.covers_header_label, 1)
+
+        self.back_to_player_button = QPushButton(t('back_to_player'))
+        self.back_to_player_button.setToolTip(t('back_to_player_tooltip'))
+        self.back_to_player_button.clicked.connect(self.show_player_view)
+        covers_header.addWidget(self.back_to_player_button)
+        covers_layout.addLayout(covers_header)
+
+        self.cover_grid = CoverGridView(self.cover_cache, lambda: getattr(self, 'theme_key', 'springfield'), parent=self.covers_container)
+        self.cover_grid.poster_activated.connect(self.open_content_detail)
+        covers_layout.addWidget(self.cover_grid, 1)
+
+        self.right_stack = QStackedWidget()
+        self.right_stack.addWidget(self.player_container)
+        self.right_stack.addWidget(self.covers_container)
+
+        self.splitter.addWidget(self.right_stack)
         self.splitter.setSizes([350, 0, 800])
         # Sin esto, un resize externo (tiling de Hyprland, snap a media pantalla en
         # ultrawide) reparte el ancho de forma impredecible: la lista puede no
@@ -404,7 +570,7 @@ class Window(QMainWindow):
         self.splitter.setCollapsible(2, False)
         self.left_panel.setMinimumWidth(280)
         self.left_panel.setMaximumWidth(480)
-        right.setMinimumWidth(480)
+        self.right_stack.setMinimumWidth(480)
         self.setMinimumSize(280 + 480, 480)
         self.home = self.build_home()
         layout.addWidget(self.home, 1)
@@ -426,6 +592,7 @@ class Window(QMainWindow):
         self.diagnostic_timer = QTimer(self)
         self.diagnostic_timer.timeout.connect(self.save_diagnostic)
         self.diagnostic_timer.start(1000)
+        self.refresh_lists_combo()
         self.section("live")
         self.show_home()
         saved_theme = 'springfield' if demo else QSettings('Tecnomata', 'IPTV').value('theme', 'springfield')
@@ -445,6 +612,135 @@ class Window(QMainWindow):
             self.publish_mpris()
         if restore and not self.demo:
             QTimer.singleShot(0, self.restore_account)
+
+    def refresh_lists_combo(self):
+        if not self.library or not self.library_scope:
+            return
+        try:
+            lists = self.library.lists(self.library_scope)
+        except LibraryError as exc:
+            self.show_error(str(exc))
+            return
+        current_id = self.lists_combo.currentData()
+        self.lists_combo.blockSignals(True)
+        self.lists_combo.clear()
+        self.lists_combo.addItem(t('lists_combo_placeholder'), None)
+        self.list_names = {}
+        selected_index = 0
+        for idx, item in enumerate(lists, start=1):
+            self.list_names[item['list_id']] = item['name']
+            label = f"{item['name']} ({item['count']})"
+            self.lists_combo.addItem(label, item['list_id'])
+            if item['list_id'] == current_id:
+                selected_index = idx
+        self.lists_combo.setCurrentIndex(selected_index)
+        self.lists_combo.blockSignals(False)
+        has_list = selected_index > 0
+        self.rename_list_button.setEnabled(has_list)
+        self.delete_list_button.setEnabled(has_list)
+
+    def choose_list(self, index):
+        list_id = self.lists_combo.itemData(index)
+        has_list = bool(list_id)
+        self.rename_list_button.setEnabled(has_list)
+        self.delete_list_button.setEnabled(has_list)
+        if not list_id:
+            if isinstance(self.collection_view, tuple) and self.collection_view[0] == 'list':
+                self.section(self.kind or 'live')
+            return
+        name = self.list_names.get(list_id, '')
+        self.show_collection(('list', list_id, name))
+
+    def create_list_dialog(self):
+        if not self.library or not self.library_scope:
+            return
+        dialog = ListNameDialog(self, t('new_list_dialog_title'))
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        name = dialog.name_edit.text().strip()
+        try:
+            list_id = self.library.create_list(self.library_scope, name)
+        except LibraryError as exc:
+            self.show_error(str(exc))
+            return
+        self.refresh_lists_combo()
+        index = self.lists_combo.findData(list_id)
+        if index >= 0:
+            self.lists_combo.setCurrentIndex(index)
+        self.status.setText(t('list_created_status', name=name))
+
+    def rename_list_dialog(self):
+        list_id = self.lists_combo.currentData()
+        if not list_id or not self.library or not self.library_scope:
+            self.show_error(t('choose_list_first'))
+            return
+        current_name = self.list_names.get(list_id, '')
+        dialog = ListNameDialog(self, t('rename_list_dialog_title'), current_name)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        new_name = dialog.name_edit.text().strip()
+        try:
+            self.library.rename_list(self.library_scope, list_id, new_name)
+        except LibraryError as exc:
+            self.show_error(str(exc))
+            return
+        self.refresh_lists_combo()
+        index = self.lists_combo.findData(list_id)
+        if index >= 0:
+            self.lists_combo.setCurrentIndex(index)
+        if isinstance(self.collection_view, tuple) and self.collection_view[0] == 'list':
+            self.list_heading.setText(t('heading_list', name=new_name))
+        self.status.setText(t('list_renamed_status', name=new_name))
+
+    def delete_list_dialog(self):
+        list_id = self.lists_combo.currentData()
+        if not list_id or not self.library or not self.library_scope:
+            self.show_error(t('choose_list_first'))
+            return
+        name = self.list_names.get(list_id, '')
+        dialog = ConfirmDialog(self, t('delete_list_confirm_title'),
+                               t('delete_list_confirm_text', name=name),
+                               t('confirm_delete'))
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        try:
+            self.library.delete_list(self.library_scope, list_id)
+        except LibraryError as exc:
+            self.show_error(str(exc))
+            return
+        self.refresh_lists_combo()
+        self.section('live')
+        self.status.setText(t('list_deleted_status', name=name))
+
+    def open_list_membership(self, item):
+        row = item.data(Qt.ItemDataRole.UserRole)
+        if not row or not self.library or not self.library_scope:
+            return
+        name = row.get('name', '')
+        try:
+            all_lists = self.library.lists(self.library_scope)
+            current_membership = self.library.list_membership(self.library_scope, 'live', row)
+        except LibraryError as exc:
+            self.show_error(str(exc))
+            return
+
+        def toggle(list_id, checked):
+            try:
+                self.library.set_list_membership(self.library_scope, list_id, 'live', row, member=checked)
+                self.refresh_lists_combo()
+                self.filter_rows()
+            except LibraryError as exc:
+                self.show_error(str(exc))
+
+        def create_and_add(new_name):
+            new_id = self.library.create_list(self.library_scope, new_name)
+            self.library.set_list_membership(self.library_scope, new_id, 'live', row, member=True)
+            self.refresh_lists_combo()
+            self.filter_rows()
+            return new_id
+
+        dialog = ListMembershipDialog(self, all_lists, current_membership, toggle, create_and_add, name)
+        dialog.exec()
 
     def build_home(self):
         home = QWidget()
@@ -535,6 +831,33 @@ class Window(QMainWindow):
         self.home_button.setChecked(False)
         self.player_button.setChecked(True)
 
+    def show_player_view(self):
+        if hasattr(self, 'right_stack'):
+            self.right_stack.setCurrentIndex(0)
+            self.sync_to_covers_button()
+
+    def show_covers_view(self):
+        if hasattr(self, 'right_stack'):
+            self.right_stack.setCurrentIndex(1)
+            self.sync_to_covers_button()
+            self.sync_back_to_player_button()
+
+    def sync_to_covers_button(self):
+        if hasattr(self, 'to_covers_button') and hasattr(self, 'right_stack'):
+            in_player = self.right_stack.currentIndex() == 0
+            is_vod_series = self.kind in ('vod', 'series') and not self.in_episodes
+            self.to_covers_button.setVisible(in_player and is_vod_series)
+
+    def sync_back_to_player_button(self):
+        if hasattr(self, 'back_to_player_button'):
+            if self.playback_status in ('Playing', 'Paused'):
+                name = self.now.text().strip()
+                if len(name) > 24:
+                    name = name[:24] + "…"
+                self.back_to_player_button.setText(f"◀ {t('back_to_player')} ({name})" if name else f"◀ {t('back_to_player')}")
+            else:
+                self.back_to_player_button.setText(t('back_to_player'))
+
     def toggle_list(self):
         self.set_list_visible(self.left_panel.isHidden())
 
@@ -561,6 +884,8 @@ class Window(QMainWindow):
         if not self.library or not self.library_scope:
             return []
         try:
+            if isinstance(view, tuple) and view[0] == 'list':
+                return self.library.list_rows(self.library_scope, view[1])
             return self.library.rows(self.library_scope, view)
         except LibraryError as exc:
             self.show_error(str(exc))
@@ -668,45 +993,63 @@ class Window(QMainWindow):
         subprocess.Popen(sys.argv, close_fds=True, start_new_session=True)
         QApplication.instance().quit()
 
-    def toggle_favorite(self):
-        item = self.items.currentItem()
-        if not item or not self.library or not self.library_scope:
-            return
-        row = item.data(Qt.ItemDataRole.UserRole)
+    def toggle_favorite_for_row(self, row):
+        if not row or not self.library or not self.library_scope:
+            return False
         kind, parent, series_name = self.row_source(row)
-        identity = self.content_id(row)
         try:
             self.library.toggle(self.library_scope, kind, row, parent, series_name)
+            is_fav = self.favorite_for(row)
             if self.collection_view:
                 self.rows = self.library_rows(self.collection_view)
             self.filter_rows()
-            for index in range(self.items.count()):
-                if self.content_id(self.items.item(index).data(Qt.ItemDataRole.UserRole)) == identity:
-                    self.items.setCurrentRow(index)
-                    break
             self.update_home()
-            self.status.setText(t('favorite_added') if self.favorite_for(row) else t('favorite_removed'))
+            self.status.setText(t('favorite_added') if is_fav else t('favorite_removed'))
+            return is_fav
         except LibraryError as exc:
             self.show_error(str(exc))
+            return False
+
+    def toggle_favorite(self):
+        item = self.items.currentItem()
+        if not item:
+            return
+        row = item.data(Qt.ItemDataRole.UserRole)
+        identity = self.content_id(row)
+        self.toggle_favorite_for_row(row)
+        for index in range(self.items.count()):
+            if self.content_id(self.items.item(index).data(Qt.ItemDataRole.UserRole)) == identity:
+                self.items.setCurrentRow(index)
+                break
 
     def show_collection(self, view):
         self.show_player()
+        self.show_player_view()
         self.collection_view = view
-        self.search.setPlaceholderText(t('search_favorites') if view == "favorites" else t('search_recent'))
+        is_list = isinstance(view, tuple) and view[0] == 'list'
+        name = view[2] if is_list else ''
+        self.search.setPlaceholderText(t('search_list', name=name) if is_list else
+                                       t('search_favorites') if view == "favorites" else t('search_recent'))
         self.in_episodes = False
         self.back.hide()
         for button in self.tabs.values():
             button.setChecked(False)
         self.favorites_button.setChecked(view == 'favorites')
         self.recent_button.setChecked(view == 'recent')
-        self.list_heading.setText(t('heading_favorites') if view == 'favorites' else t('heading_recent'))
+        self.scan_button.hide()
+        if not is_list:
+            self.lists_combo.blockSignals(True)
+            self.lists_combo.setCurrentIndex(0)
+            self.lists_combo.blockSignals(False)
+        self.list_heading.setText(t('heading_list', name=name) if is_list else
+                                  t('heading_favorites') if view == 'favorites' else t('heading_recent'))
         self.category.hidePopup()
         self.search.clear()
         self.sync_busy()
         self.set_rows(self.library_rows(view))
         if not self.rows:
-            self.status.setText(t('favorites_empty_hint') if view == 'favorites'
-                                else t('recent_empty_hint'))
+            self.status.setText(t('list_empty_hint') if is_list else
+                                t('favorites_empty_hint') if view == 'favorites' else t('recent_empty_hint'))
 
     def collection_details(self, row):
         kind, parent, _ = self.row_source(row)
@@ -901,6 +1244,7 @@ class Window(QMainWindow):
             self.progress_context = None
         self.playback_status = 'Paused' if code == 'paused' else 'Playing' if code == 'playing' else 'Stopped'
         self.publish_mpris()
+        self.sync_back_to_player_button()
         self.pause_button.setText(t('resume_button') if code == 'paused' else t('pause_button'))
         self.status.setText(t(f'status_{code}'))
         if code == 'playing' and self.pending_history:
@@ -957,12 +1301,14 @@ class Window(QMainWindow):
     def sync_busy(self):
         # Preloading must not lock browsing or playback of loaded sections.
         foreground = bool(self.foreground_jobs)
-        for widget in (self.navigation, self.items, self.back, self.favorites_button, self.recent_button, self.home):
+        for widget in (self.navigation, self.items, self.back, self.favorites_button, self.recent_button,
+                       self.home, self.lists_combo, self.new_list_button):
             widget.setEnabled(not foreground)
         self.category.setEnabled(not foreground and not self.in_episodes and not self.collection_view)
         self.connect_button.setEnabled(not self.jobs)
         self.forget_button.setEnabled(not self.jobs)
         self.refresh_button.setEnabled(self.client is not None and not self.jobs)
+        self.scan_button.setEnabled(self.client is not None and not foreground)
         self.sync_favorite()
 
     def submit(self, function, callback, background=False, on_error=None):
@@ -1065,6 +1411,7 @@ class Window(QMainWindow):
             self.clear_home_previews()
             self.demo = False
             self.connect_button.setText(t('change_service'))
+            self.refresh_lists_combo()
             self.section(self.kind)
             self.update_home()
             if was_home:
@@ -1088,6 +1435,7 @@ class Window(QMainWindow):
             self.account_note.setText(t('account_forgotten'))
             self.connect_button.setText(t('connect_service'))
             self.preload_status.clear()
+            self.refresh_lists_combo()
             self.section("live")
             self.update_home()
             self.sync_busy()
@@ -1097,7 +1445,125 @@ class Window(QMainWindow):
         if self.client and not self.jobs:
             self.cache = CatalogCache(self.client)
             self.failed_sections.clear()
+            self.refresh_lists_combo()
             self.section(self.kind)
+
+    def current_scan_context(self):
+        query = self.search.text().strip()
+        if query:
+            return query
+        category = self.category.currentData()
+        if category is not None:
+            return self.category.currentText()
+        return None
+
+    def toggle_quality_scan(self):
+        if self.scan_active:
+            self.cancel_quality_scan()
+        else:
+            self.start_quality_scan()
+
+    def start_quality_scan(self):
+        if not self.client or self.foreground_jobs or self.scan_active:
+            if not self.client:
+                self.show_error(t('scan_requires_connection'))
+            return
+        context = self.current_scan_context()
+        if not context:
+            self.show_error(t('scan_all_channels_forbidden'))
+            return
+        rows = list(self.visible_rows)
+        if not rows:
+            self.show_error(t('scan_no_channels'))
+            return
+        dialog = ConfirmDialog(self, t('scan_confirm_title'),
+                               t('scan_confirm_text', count=len(rows)), t('scan_confirm_button'))
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        self.scan_active = True
+        self.scan_cancel_requested = False
+        self.scan_queue = rows
+        self.scan_total = len(rows)
+        self.scan_tally = {'sd': [], 'hd': [], 'fullhd': [], 'unknown': 0}
+        self.scan_context_label = context
+        self.scan_button.setText(t('scan_cancel_button'))
+        self.status.setText(t('scan_progress', done=0, total=self.scan_total))
+        self.scan_next()
+
+    def cancel_quality_scan(self):
+        self.scan_cancel_requested = True
+
+    def scan_next(self):
+        if self.scan_cancel_requested or not self.scan_queue or not self.client:
+            self.finish_quality_scan(cancelled=self.scan_cancel_requested or not self.client)
+            return
+        row = self.scan_queue.pop(0)
+        try:
+            url = self.client.stream_url('live', row.get('stream_id'), row.get('container_extension'))
+        except ServiceError:
+            url = None
+
+        def probe():
+            return probe_stream(url) if url else (None, None, None)
+
+        def done(result):
+            width, height, tier = result
+            if tier and self.library and self.library_scope:
+                try:
+                    self.library.save_quality(self.library_scope, 'live', row, tier, width, height)
+                except LibraryError as exc:
+                    self.show_error(str(exc))
+            if tier:
+                self.scan_tally[tier].append(row)
+            else:
+                self.scan_tally['unknown'] += 1
+            done_count = self.scan_total - len(self.scan_queue)
+            self.status.setText(t('scan_progress', done=done_count, total=self.scan_total))
+            self.filter_rows()
+            self.scan_next()
+
+        self.submit(probe, done, background=True, on_error=lambda _msg: done((None, None, None)))
+
+    def finish_quality_scan(self, cancelled=False):
+        self.scan_active = False
+        self.scan_button.setText(t('scan_quality_button'))
+        done_count = self.scan_total - len(self.scan_queue)
+        if cancelled:
+            self.status.setText(t('scan_cancelled', done=done_count, total=self.scan_total))
+            return
+        created = []
+        if self.library and self.library_scope:
+            for tier in TIERS:
+                tier_rows = self.scan_tally.get(tier) or []
+                if not tier_rows:
+                    continue
+                context_name = f"{self.scan_context_label} · {t(f'quality_tier_{tier}')}"
+                tier_name = t(f'quality_tier_{tier}')
+                try:
+                    context_list_id = (self.library.list_by_name(self.library_scope, context_name)
+                                        or self.library.create_list(self.library_scope, context_name))
+                    self.library.replace_list_members(self.library_scope, context_list_id,
+                                                       [('live', tier_row, '') for tier_row in tier_rows])
+                    created.append(context_name)
+                    # A running "all channels seen as HD/SD/Full HD" list, across every search scanned so far.
+                    tier_list_id = (self.library.list_by_name(self.library_scope, tier_name)
+                                     or self.library.create_list(self.library_scope, tier_name))
+                    for tier_row in tier_rows:
+                        for other in TIERS:
+                            if other == tier:
+                                continue
+                            other_id = self.library.list_by_name(self.library_scope, t(f'quality_tier_{other}'))
+                            if other_id:
+                                self.library.set_list_membership(self.library_scope, other_id, 'live', tier_row, member=False)
+                        self.library.set_list_membership(self.library_scope, tier_list_id, 'live', tier_row, member=True)
+                except LibraryError as exc:
+                    self.show_error(str(exc))
+            self.refresh_lists_combo()
+        summary = t('scan_done', total=done_count, fullhd=len(self.scan_tally['fullhd']),
+                   hd=len(self.scan_tally['hd']), sd=len(self.scan_tally['sd']), unknown=self.scan_tally['unknown'])
+        if created:
+            summary += t('scan_lists_updated', names=', '.join(created))
+        self.status.setText(summary)
 
     def preload_next(self):
         if not self.cache or self.pending_section:
@@ -1143,9 +1609,17 @@ class Window(QMainWindow):
         self.collection_view = None
         self.favorites_button.setChecked(False)
         self.recent_button.setChecked(False)
+        self.lists_combo.blockSignals(True)
+        self.lists_combo.setCurrentIndex(0)
+        self.lists_combo.blockSignals(False)
+        self.scan_button.setVisible(kind == 'live')
         self.list_heading.setText({'live': t('heading_live'), 'vod': t('heading_vod'), 'series': t('heading_series')}[kind])
         self.show_player()
         self.kind = kind
+        if kind in ('vod', 'series') and self.playback_status == 'Stopped':
+            self.show_covers_view()
+        else:
+            self.show_player_view()
         self.search.setPlaceholderText({"live": t('search_channel'), "vod": t('search_movie'), "series": t('search_series')}[kind])
         self.in_episodes = False
         self.sync_busy()
@@ -1225,14 +1699,26 @@ class Window(QMainWindow):
         self.items.blockSignals(True)
         self.items.clear()
         chosen_item = None
+        visible_rows = []
         favorites = {(entry['_kind'], str(entry.get('series_id') if entry['_kind'] == 'series' else entry.get('stream_id')), entry['_parent'])
                      for entry in self.library_rows('favorites')}
+        membership_map, quality_map = {}, {}
+        if self.library and self.library_scope:
+            try:
+                membership_map = self.library.list_membership_map(self.library_scope, 'live')
+                quality_map = self.library.quality_map(self.library_scope, 'live')
+            except LibraryError as exc:
+                self.show_error(str(exc))
         for row in self.rows:
             name = str(row.get("name", t('unnamed_category')))
             if query in name.casefold():
                 source, parent, series_name = self.row_source(row)
+                visible_rows.append(row)
                 favorite = (source, str(row.get("series_id") if source == "series" else row.get("stream_id")), str(parent)) in favorites
-                label = ('★ ' if favorite else '☆ ') + name
+                live = source == 'live'
+                identity = str(row.get('stream_id')) if live else None
+                tier = quality_map.get(identity) if live else None
+                label = (t(f'quality_badge_{tier}') if tier else '') + ('★ ' if favorite else '☆ ') + name
                 if self.collection_view:
                     prefix = {'live':t('prefix_live'), 'vod':t('prefix_vod'), 'series':t('prefix_series'), 'episode':t('prefix_episode')}[source]
                     if source == 'episode' and series_name:
@@ -1243,6 +1729,9 @@ class Window(QMainWindow):
                 selected = self.chosen.get(self.content_context()) == self.content_id(row)
                 item.setData(CHOSEN_ROLE, selected)
                 item.setData(FAVORITE_ROLE, favorite)
+                if live:
+                    item.setData(LIVE_ROLE, True)
+                    item.setData(IN_LIST_ROLE, identity in membership_map)
                 item.setToolTip(t('chosen_tooltip') if selected else name)
                 self.items.addItem(item)
                 if self.collection_view:
@@ -1267,7 +1756,108 @@ class Window(QMainWindow):
         if chosen_item:
             self.items.setCurrentItem(chosen_item)
         self.items.blockSignals(False)
+        self.visible_rows = visible_rows
         self.sync_favorite()
+        self.update_cover_grid(visible_rows)
+
+    def update_cover_grid(self, rows):
+        if not hasattr(self, 'cover_grid'):
+            return
+        self.cover_grid.blockSignals(True)
+        self.cover_grid.clear()
+        if self.kind in ('vod', 'series') and not self.in_episodes:
+            for row in rows:
+                item = QListWidgetItem()
+                item.setData(Qt.ItemDataRole.UserRole, row)
+                self.cover_grid.addItem(item)
+            cat_name = self.category.currentText()
+            heading = self.list_heading.text()
+            if cat_name and cat_name != t('all_categories'):
+                self.covers_header_label.setText(f"{heading} · {cat_name} ({len(rows)})")
+            else:
+                self.covers_header_label.setText(f"{heading} ({len(rows)})")
+        else:
+            self.covers_header_label.setText(f"{self.list_heading.text()} ({len(rows)})")
+        self.cover_grid.blockSignals(False)
+
+    def open_series(self, row):
+        def loaded(episodes):
+            self.choose_content(row)
+            self.current_series_id = str(row.get("series_id"))
+            self.current_series_name = str(row.get("name", ""))
+            self.in_episodes = True
+            self.search.setPlaceholderText(t('search_episode'))
+            self.sync_busy()
+            self.back.show()
+            self.search.clear()
+            self.set_rows(episodes)
+            self.show_player_view()
+
+        if self.demo:
+            loaded([{"name": "T1 · E1 · Episodio de prueba", "stream_id": 1}])
+        else:
+            series_id = row.get("series_id")
+            if str(series_id) in self.cache.episode_lists:
+                loaded(self.cache.episode_lists[str(series_id)])
+            else:
+                cache = self.cache
+                self.submit(lambda: cache.episodes(series_id), loaded)
+
+    def open_content_detail(self, row):
+        if not row:
+            return
+        source, parent, series_name = self.row_source(row)
+        favorites = {(entry['_kind'], str(entry.get('series_id') if entry['_kind'] == 'series' else entry.get('stream_id')), str(entry['_parent']))
+                     for entry in self.library_rows('favorites')}
+        target_id = str(row.get('series_id') if self.kind == 'series' else row.get('stream_id'))
+        is_fav = (self.kind, target_id, str(parent)) in favorites
+
+        progress_data = None
+        if self.library and self.library_scope and self.kind in ('vod', 'series'):
+            try:
+                if self.kind == 'vod':
+                    progress_data = self.library.progress(self.library_scope, 'vod', row, parent)
+                elif self.kind == 'series':
+                    target, saved = self.collection_details(row)
+                    progress_data = saved
+            except Exception:
+                progress_data = None
+
+        def on_play(restart=False):
+            self.show_player_view()
+            if self.kind == 'series':
+                try:
+                    target, saved = self.collection_details(row)
+                    if target:
+                        self.play_content(target, 'episode', str(row.get('series_id')), str(row.get('name', '')), start_over=restart)
+                        return
+                except Exception:
+                    pass
+                self.open_series(row)
+            else:
+                self.play_content(row, 'vod', parent, series_name, start_over=restart)
+
+        def on_episodes():
+            self.open_series(row)
+
+        def on_toggle_favorite():
+            return self.toggle_favorite_for_row(row)
+
+        theme = getattr(self, 'theme_key', 'springfield')
+        dialog = ContentDetailDialog(
+            parent=self,
+            row=row,
+            kind=self.kind,
+            cover_cache=self.cover_cache,
+            theme_key=theme,
+            progress_data=progress_data,
+            is_fav=is_fav,
+            on_play=on_play,
+            on_restart=lambda: on_play(restart=True),
+            on_toggle_favorite=on_toggle_favorite,
+            on_episodes=on_episodes,
+        )
+        dialog.exec()
 
     def activate(self, item):
         row = item.data(Qt.ItemDataRole.UserRole)
@@ -1275,30 +1865,13 @@ class Window(QMainWindow):
             self.open_library_row(row)
             return
         if self.kind == "series" and not self.in_episodes:
-            def loaded(episodes):
-                self.choose_content(row)
-                self.current_series_id = str(row.get("series_id"))
-                self.current_series_name = str(row.get("name", ""))
-                self.in_episodes = True
-                self.search.setPlaceholderText(t('search_episode'))
-                self.sync_busy()
-                self.back.show()
-                self.search.clear()
-                self.set_rows(episodes)
-            if self.demo:
-                loaded([{"name": "T1 · E1 · Episodio de prueba", "stream_id": 1}])
-            else:
-                series_id = row.get("series_id")
-                if str(series_id) in self.cache.episode_lists:
-                    loaded(self.cache.episode_lists[str(series_id)])
-                else:
-                    cache = self.cache
-                    self.submit(lambda: cache.episodes(series_id), loaded)
+            self.open_series(row)
             return
         source, parent, series_name = self.row_source(row)
         self.play_content(row, source, parent, series_name)
 
     def play_content(self, row, source, parent='', series_name='', start_over=False):
+        self.show_player_view()
         play_kind = 'series' if source == 'episode' else source
         if self.demo:
             index = int(row.get("stream_id", 1)) - 1
