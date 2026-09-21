@@ -23,12 +23,29 @@ def classify(height):
 def probe_stream(url, timeout=7, engine_factory=None):
     """Devuelve (width, height, tier). Todo None si no se pudo determinar a tiempo."""
     if engine_factory is None:
+        import locale, ctypes
+        try:
+            locale.setlocale(locale.LC_NUMERIC, "C")
+        except Exception:
+            pass
+        try:
+            ctypes.CDLL(None).setlocale(1, b"C")
+        except Exception:
+            pass
         import mpv
-        engine_factory = lambda: mpv.MPV(
-            vo="null", ao="null", config=False, idle=True, hwdec="no", terminal=False,
-            ytdl=False, user_agent="VLC/3.0.21 LibVLC/3.0.21", network_timeout=min(timeout, 20),
-            loglevel="error", input_default_bindings=False, input_vo_keyboard=False,
-            osd_level=0, osc=False)
+        def default_factory():
+            eng = mpv.MPV(
+                vo="null", ao="null", config=False, idle=True, hwdec="no", terminal=False,
+                user_agent="VLC/3.0.21 LibVLC/3.0.21", network_timeout=min(timeout, 20),
+                loglevel="error", input_default_bindings=False, input_vo_keyboard=False,
+                osd_level=0)
+            for opt, val in (("osc", "no"), ("ytdl", "no")):
+                try:
+                    eng._set_property(opt, val)
+                except Exception:
+                    pass
+            return eng
+        engine_factory = default_factory
     result = {"width": None, "height": None}
     ready = threading.Event()
 

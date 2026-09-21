@@ -53,14 +53,27 @@ class VideoWidget(QOpenGLWidget):
         if self.closed:
             return
         try:
+            import locale, ctypes
+            try:
+                locale.setlocale(locale.LC_NUMERIC, "C")
+            except Exception:
+                pass
+            try:
+                ctypes.CDLL(None).setlocale(1, b"C")
+            except Exception:
+                pass
             import mpv
             self.engine = mpv.MPV(vo="libmpv", config=False, idle=True,
                                   hwdec="no", terminal=False, volume=65,
-                                  ytdl=False,
                                   user_agent="VLC/3.0.21 LibVLC/3.0.21", network_timeout=20,
                                   log_handler=self.engine_log, loglevel="warn",
                                   input_default_bindings=False, input_vo_keyboard=False,
-                                  osd_level=0, osc=False)
+                                  osd_level=0)
+            for opt, val in (("osc", "no"), ("ytdl", "no")):
+                try:
+                    self.engine._set_property(opt, val)
+                except Exception:
+                    pass
             self.engine.sub_scale = self.subtitle_scale
             self.proc = mpv.MpvGlGetProcAddressFn(
                 lambda _ctx, name: int(self.context().getProcAddress(name)))
@@ -87,7 +100,9 @@ class VideoWidget(QOpenGLWidget):
             self._ended = ended
             if self.pending_url:
                 self.play(self.pending_url)
-        except Exception:
+        except Exception as err:
+            import traceback
+            traceback.print_exc()
             self.init_error = t('error_opengl')
             self.diagnostic = {"state": "error", "failure": "opengl"}
             self.failed.emit(self.init_error)

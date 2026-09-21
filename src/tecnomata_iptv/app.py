@@ -2007,6 +2007,15 @@ def main():
     parser.add_argument("--quit-after", type=int, help=t('cli_quit_after_help'))
     args = parser.parse_args()
     app = QApplication(sys.argv[:1])
+    import locale, ctypes
+    try:
+        locale.setlocale(locale.LC_NUMERIC, "C")
+    except Exception:
+        pass
+    try:
+        ctypes.CDLL(None).setlocale(1, b"C")
+    except Exception:
+        pass
     app.setApplicationName("Tecnomata IPTV")
     app.setDesktopFileName("tecnomata-iptv")
     configure_appearance(app)
