@@ -1,4 +1,14 @@
-# Punto de reanudación — 2026-09-16
+# Punto de reanudación — 2026-09-20
+
+## Listas personalizadas, escaneo de calidad y carátulas con ficha flotante — 2026-09-20
+
+Arturo solicita portar a la versión nativa de Linux las listas personalizadas y el escaneo de calidad de video (SD/HD/Full HD) evitando escanear todo el catálogo por seguridad, además de una vista de carátulas para Películas y Series que no interrumpa la reproducción activa (con botón 'Ir a carátulas' bajo la pantalla, o apertura automática al entrar sin video activo), y una ficha flotante con sinopsis, metadatos y botones de acción.
+
+1. **Listas personalizadas (Playlists CRUD)**: Tablas SQLite `lists` y `list_members`, combo 'Mis listas', botones crear, renombrar y borrar, y diálogo de asignación mediante botón `≡` visible en canales en vivo.
+2. **Escaneo nativo de calidad**: Sondeo headless con `libmpv` (`vo="null", ao="null"`). Clasifica en SD (<720p), HD (720-1079p) y Full HD (>=1080p). Guarda de seguridad bloquea el escaneo en catálogo completo sin filtro. Búsquedas contextuales (ej. "hbo") generan las listas `hbo · Full HD`, `hbo · HD` y `hbo · SD` acumulando en las globales.
+3. **Galería de carátulas**: `CoverGridView` con descarga asíncrona a disco (`~/.cache/tecnomata-iptv/covers/`), limitador de concurrencia a 4 hilos, registro de URLs fallidas (evita bucles 404), caché LRU en memoria (400 pósters) y estricto aislamiento de hilos (hilo de red descarga a archivo, carga a QPixmap sólo en hilo GUI).
+4. **Ficha flotante con botón**: Modal `ContentDetailDialog` con póster, calificación, año, duración, género, director, reparto, sinopsis, barra de progreso y botones de acción (`▶ Reproducir`/`Continuar`, `↺ Desde el inicio`, `Ver episodios`, `★ / ☆ Favorito`).
+5. **Empaquetado e instalación Flatpak**: Manifiesto actualizado con commit pinneado, subido a GitHub y Gitea, compilado e instalado localmente en Fedora vía `org.flatpak.Builder`. 88 pruebas automatizadas pasando al 100%.
 
 ## Contraste de selección — 2026-09-16
 
