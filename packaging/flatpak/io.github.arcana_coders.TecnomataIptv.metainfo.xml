@@ -64,6 +64,11 @@
     <keyword>television</keyword>
   </keywords>
   <releases>
+    <release version="0.2.0" date="2026-09-20">
+      <description>
+        <p>Custom playlists CRUD, headless channel quality scanner (SD/HD/Full HD), and cover poster gallery mode for movies and series.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-09-17">
       <description>
         <p>First packaged release: live TV/movies/series in one window, per-item resume, favorites, four themes and MPRIS integration.</p>
