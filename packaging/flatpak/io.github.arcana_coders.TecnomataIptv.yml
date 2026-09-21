@@ -21,8 +21,6 @@ finish-args:
   # Secret Service / GNOME Keyring: the app stores the Xtream account there,
   # never on disk. No broader D-Bus access is requested.
   - --talk-name=org.freedesktop.secrets
-  # MPRIS: publishes only the playing title and playback state, never URLs.
-  - --own-name=org.mpris.MediaPlayer2.io.github.arcana_coders.TecnomataIptv
 
 cleanup:
   - /include
@@ -260,4 +258,5 @@ modules:
     sources:
       - type: git
         url: https://github.com/arcana-coders/tecnomata-iptv.git
-        commit: eb93822691f5acff290552b7203314c2cc47134c
+        tag: v0.2.0
+        commit: 7bde74335478ff08df33d9ea917791e893a31c54
